@@ -9,6 +9,7 @@ import { Subarea } from '../../subareas/Entidad/subarea.schema';
 import { Empleado } from '../../empleados/Entidad/empleado.schema';
 import { HistorialReclamo } from '../../historial-reclamo/Entidad/historial-reclamo.schema';
 import { ResumenResolucion } from '../../resumen-resolucion/Entidad/resumen-resolucion.schema';
+
 import { Types } from 'mongoose';
 @Schema({ timestamps: true })
 export class Reclamo extends Document {
@@ -51,5 +52,5 @@ export class Reclamo extends Document {
   @Prop({ required: true })
   clienteId: string;
 }
-
+export type ReclamoDocument = Reclamo & Document;
 export const ReclamoSchema = SchemaFactory.createForClass(Reclamo);
