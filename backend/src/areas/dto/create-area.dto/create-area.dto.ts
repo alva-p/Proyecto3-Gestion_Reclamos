@@ -1,1 +1,3 @@
-export class CreateAreaDto {}
+export class CreateAreaDto {
+  nombre: string;
+}

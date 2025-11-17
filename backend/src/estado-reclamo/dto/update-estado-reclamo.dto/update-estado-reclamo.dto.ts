@@ -1,1 +1,4 @@
-export class UpdateEstadoReclamoDto {}
+import { PartialType } from '@nestjs/mapped-types';
+import { CreateEstadoReclamoDto } from '../create-estado-reclamo.dto/create-estado-reclamo.dto';
+
+export class UpdateEstadoReclamoDto extends PartialType(CreateEstadoReclamoDto) {}

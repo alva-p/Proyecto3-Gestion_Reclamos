@@ -1,1 +1,4 @@
-export class CreateTipoProyectoDto {}
+export class CreateTipoProyectoDto {
+  nombre: string;
+  descripcion?: string;
+}

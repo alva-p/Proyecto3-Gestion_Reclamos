@@ -1,1 +1,3 @@
-export class CreateCriticidadDto {}
+export class CreateCriticidadDto {
+  nombre: string;
+}

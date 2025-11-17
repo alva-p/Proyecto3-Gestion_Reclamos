@@ -1,1 +1,3 @@
-export class CreateEstadoReclamoDto {}
+export class CreateEstadoReclamoDto {
+  nombre: string;
+}

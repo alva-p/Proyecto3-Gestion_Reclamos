@@ -7,8 +7,11 @@ export class Subarea extends Document {
   @Prop({ required: true })
   nombre: string;
 
-  @Prop({ type: String, ref: Area.name })
+  @Prop({ type: String, ref: Area.name, required: true })
   area: Area;
+
+  @Prop({ default: false })
+  esInterna: boolean;
 }
 
 export const SubareaSchema = SchemaFactory.createForClass(Subarea);

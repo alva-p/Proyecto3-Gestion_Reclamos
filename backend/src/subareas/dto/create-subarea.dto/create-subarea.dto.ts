@@ -1,1 +1,5 @@
-export class CreateSubareaDto {}
+export class CreateSubareaDto {
+  nombre: string;
+  area: string;
+  esInterna?: boolean;
+}
