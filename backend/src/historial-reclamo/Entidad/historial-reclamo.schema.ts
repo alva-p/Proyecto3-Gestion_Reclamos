@@ -8,12 +8,11 @@ import { Reclamo } from '../../reclamos/Entidad/reclamo.schema';
 
 @Schema({ timestamps: true })
 export class HistorialReclamo extends Document {
-  
   @Prop({ type: Types.ObjectId, ref: Reclamo.name, required: true })
   reclamoId: string;
 
   @Prop({ type: Types.ObjectId, ref: EstadoReclamo.name, required: true })
-  estado: string;
+  estadoReclamo: string;
 
   @Prop({ type: Types.ObjectId, ref: Area.name })
   area: string;
@@ -30,5 +29,5 @@ export class HistorialReclamo extends Document {
   @Prop({ required: true })
   fechaHora: Date;
 }
-
+export type HistorialReclamoDocument = HistorialReclamo & Document;
 export const HistorialReclamoSchema = SchemaFactory.createForClass(HistorialReclamo);

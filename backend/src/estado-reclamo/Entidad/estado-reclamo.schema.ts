@@ -6,5 +6,5 @@ export class EstadoReclamo extends Document {
   @Prop({ required: true })
   nombre: string;
 }
-
+export type EstadoReclamoDocument = EstadoReclamo & Document;
 export const EstadoReclamoSchema = SchemaFactory.createForClass(EstadoReclamo);

@@ -17,9 +17,6 @@ export class ResumenResolucion extends Document {
 
   @Prop({ required: true })
   fechaHora: Date;
-
-  @Prop({ type: [String], default: [] })
-  adjuntos: string[];
 }
-
+export type ResumenResolucionDocument = ResumenResolucion & Document;
 export const ResumenResolucionSchema = SchemaFactory.createForClass(ResumenResolucion);

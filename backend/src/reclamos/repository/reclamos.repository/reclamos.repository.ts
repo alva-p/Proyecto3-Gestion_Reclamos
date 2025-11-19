@@ -40,10 +40,7 @@ export class ReclamosRepository {
   }
 
     // Agregar registro al historial
-  async pushHistorial(
-    reclamoId: string,
-    historialId: string,
-  ): Promise<ReclamoDocument | null> {
+  async pushHistorial(reclamoId: string, historialId: string, ): Promise<ReclamoDocument | null> {
     return this.reclamoModel
       .findByIdAndUpdate(
         reclamoId,
