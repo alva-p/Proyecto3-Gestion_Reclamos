@@ -1,24 +1,24 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { HistorialReclamoRepository } from './repository/historial-reclamo.repository/historial-reclamo.repository';
 import { EstadoReclamoService } from '../estado-reclamo/estado-reclamo.service';
-import { AreaService } from '../areas/areas.service';
-import { SubareaService } from '../subareas/subareas.service';
-import { EmpleadoService } from '../empleados/empleados.service';
+import { AreasService } from '../areas/areas.service';
+import { SubareasService } from '../subareas/subareas.service';
+import { EmpleadosService } from '../empleados/empleados.service';
 
 @Injectable()
 export class HistorialReclamoService {
   constructor(
     private readonly historialRepository: HistorialReclamoRepository,
     private readonly estadoReclamoService: EstadoReclamoService,
-    private readonly areaService: AreaService,
-    private readonly subareaService: SubareaService,
-    private readonly empleadoService: EmpleadoService,
+    private readonly areaService: AreasService,
+    private readonly subareaService: SubareasService,
+    private readonly empleadoService: EmpleadosService,
   ) {}
 
   // Crear historial simple
   async create(dto: any) {
     const { estadoReclamo, area, subarea, empleado, detalleAccion, reclamoId } = dto;
-
+    /*
     if (!detalleAccion || detalleAccion.trim().length === 0) {
       throw new BadRequestException('El detalle de acción es obligatorio.');
     }
@@ -40,7 +40,7 @@ export class HistorialReclamoService {
       empleadoFound = await this.empleadoService.findById(empleado);
       if (!empleadoFound) throw new NotFoundException('Empleado inválido.');
     }
-
+    */
     return this.historialRepository.create({
       estadoReclamo: estadoReclamo,
       area,

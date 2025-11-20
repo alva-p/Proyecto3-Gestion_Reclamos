@@ -19,10 +19,10 @@ import { CriticidadModule } from './criticidad/criticidad.module';
 import { EstadoReclamoModule } from './estado-reclamo/estado-reclamo.module';
 import { EstadoSolicitudModule } from './estado-solicitud/estado-solicitud.module';
 import { ResumenResolucionModule } from './resumen-resolucion/resumen-resolucion.module';
-
+import { HealthController } from './health/health.controller';
 @Module({
   imports: [DatabaseModule, UsuariosModule, RolesModule, PermisosModule, ClientesModule, ProyectosModule, TipoProyectoModule, ReclamosModule, HistorialReclamoModule, AreasModule, SubareasModule, EmpleadosModule, TipoReclamoModule, PrioridadModule, CriticidadModule, EstadoReclamoModule, EstadoSolicitudModule, ResumenResolucionModule],
-  controllers: [AppController],
+  controllers: [AppController, HealthController],
   providers: [AppService],
 })
 export class AppModule {}

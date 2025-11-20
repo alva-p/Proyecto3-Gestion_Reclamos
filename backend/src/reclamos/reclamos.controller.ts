@@ -6,7 +6,10 @@ import {
   Param,
   Body,
   Query,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
+//PONER AL CLIENTEEE
 import { ReclamosService } from './reclamos.service';
 
 import { CreateReclamoDto } from './dto/create-reclamo.dto/create-reclamo.dto';
@@ -16,18 +19,17 @@ import { AsignarEmpleadoDto } from './dto/asignar-empleado.dto/asignar-empleado.
 import { CambiarAreaDto } from './dto/cambio-area.dto/cambio-area.dto';
 import { CrearResumenResolucionDto } from '../resumen-resolucion/dto/create-resumen-resolucion.dto/create-resumen-resolucion.dto';
 
+// @UseGuards(AuthGuard)  <-- CUANDO IMPLEMENTES JWT
 @Controller('reclamos')
 export class ReclamosController {
   constructor(private readonly reclamosService: ReclamosService) {}
 
   // 1 - Crear reclamo (cliente)
-    @Post()
-    createReclamo(@Body() dto: CreateReclamoDto) { // <- Cambiado de 'create' a 'createReclamo'
-        // **NOTA:** Necesitas saber cómo obtienes el 'clienteId' en el controlador. 
-        // Asumiré que lo obtienes de un guardia de autenticación (AuthGuard).
-        const clienteId = 'ID_DEL_CLIENTE_DESDE_EL_TOKEN'; // <--- AQUI DEBES OBTENER EL ID REAL
-        return this.reclamosService.createReclamo(dto, clienteId); 
-    }
+  @Post()
+  createReclamo(@Body() dto: CreateReclamoDto, @Req() req) {
+    const clienteId = req.user.id; // Real, no hardcodeado
+    return this.reclamosService.createReclamo(dto, clienteId);
+  }
 
   // 2 - Listado con filtros
   @Get()
@@ -41,9 +43,9 @@ export class ReclamosController {
     return this.reclamosService.findById(id);
   }
 
-  // 4 - Actualizar reclamo (solo datos base)
+  // 4 - Actualizar datos base
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateReclamoDto) {
+  update(@Param('id') id: string, @Body() dto: UpdateReclamoDto, @Req() req) {
     return this.reclamosService.update(id, dto);
   }
 
@@ -52,6 +54,7 @@ export class ReclamosController {
   cambiarEstado(
     @Param('id') reclamoId: string,
     @Body() dto: CambiarEstadoReclamoDto,
+    @Req() req,
   ) {
     return this.reclamosService.cambiarEstado(reclamoId, dto);
   }
@@ -61,6 +64,7 @@ export class ReclamosController {
   asignarEmpleado(
     @Param('id') reclamoId: string,
     @Body() dto: AsignarEmpleadoDto,
+    @Req() req,
   ) {
     return this.reclamosService.asignarEmpleado(reclamoId, dto);
   }
@@ -70,6 +74,7 @@ export class ReclamosController {
   cambiarArea(
     @Param('id') reclamoId: string,
     @Body() dto: CambiarAreaDto,
+    @Req() req,
   ) {
     return this.reclamosService.cambiarArea(reclamoId, dto);
   }
@@ -79,6 +84,7 @@ export class ReclamosController {
   cerrarReclamo(
     @Param('id') reclamoId: string,
     @Body() dto: CrearResumenResolucionDto,
+    @Req() req,
   ) {
     return this.reclamosService.cerrarReclamo(reclamoId, dto);
   }

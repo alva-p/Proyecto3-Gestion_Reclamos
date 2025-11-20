@@ -16,6 +16,8 @@ import { EstadoReclamoService } from '../estado-reclamo/estado-reclamo.service';
 import { HistorialReclamoService } from '../historial-reclamo/historial-reclamo.service';
 import { ResumenResolucionService } from '../resumen-resolucion/resumen-resolucion.service';
 import { EmpleadosService } from '../empleados/empleados.service';
+import { AsignarEmpleadoDto } from './dto/asignar-empleado.dto/asignar-empleado.dto';
+
 @Injectable()
 export class ReclamosService {
     constructor(
@@ -43,7 +45,7 @@ export class ReclamosService {
             subarea,
             proyectoId,
         } = dto;
-
+        /*
         const proyecto = await this.proyectosService.findById(proyectoId);
         if (!proyecto) {
             throw new NotFoundException('El proyecto no existe.');
@@ -69,7 +71,7 @@ export class ReclamosService {
             subareaFound = await this.subareaService.findById(subarea);
             if (!subareaFound) throw new NotFoundException('Subárea inválida.');
         }
-
+        */
         const estadoInicial = await this.estadoReclamoService.findByNombre('Enviado');
         if (!estadoInicial) {
             throw new NotFoundException('No se encontró el estado inicial "Enviado".');
@@ -152,7 +154,7 @@ export class ReclamosService {
 
         // Actualizar reclamo
         const updated = await this.reclamosRepository.update(id, dto);
-
+        if (!updated) throw new NotFoundException('No se pudo actualizar el reclamo.');
         // Registrar cambios relevantes en historial
         for (const cambio of cambios) {
             await this.historialReclamoService.createAndAttach(id, {
@@ -181,12 +183,12 @@ export class ReclamosService {
         if (reclamo.estadoActual?.nombre === 'Cerrado') {
             throw new ConflictException('El reclamo ya está cerrado.');
         }
-
+        /*
         if (empleadoId) {
             const empleado = await this.subareaService.findEmpleadoById(empleadoId);
             if (!empleado) throw new NotFoundException('Empleado no encontrado.');
         }
-
+        */
         await this.reclamosRepository.updateEstado(reclamoId, nuevoEstadoId);
 
         await this.historialReclamoService.createAndAttach(reclamoId, {
@@ -210,10 +212,10 @@ export class ReclamosService {
         if (reclamo.estadoActual?.nombre === 'Cerrado') {
             throw new ConflictException('No se puede asignar un empleado a un reclamo cerrado.');
         }
-
+        /*
         const empleado = await this.empleadosService.findById(empleadoId);
         if (!empleado) throw new NotFoundException('Empleado no encontrado.');
-
+        */
         await this.reclamosRepository.asignarEmpleado(reclamoId, empleadoId);
 
         await this.historialReclamoService.createAndAttach(reclamoId, {
@@ -232,7 +234,7 @@ export class ReclamosService {
 
         const reclamo = await this.reclamosRepository.findById(reclamoId);
         if (!reclamo) throw new NotFoundException('Reclamo no encontrado.');
-
+        /*
         const area = await this.areaService.findById(areaId);
         if (!area) throw new NotFoundException('Área inválida.');
 
@@ -241,7 +243,7 @@ export class ReclamosService {
             subarea = await this.subareaService.findById(subareaId);
             if (!subarea) throw new NotFoundException('Subárea inválida.');
         }
-
+        */
         await this.reclamosRepository.cambiarArea(reclamoId, areaId, subareaId,);
 
         await this.historialReclamoService.createAndAttach(reclamoId, {
@@ -286,7 +288,6 @@ export class ReclamosService {
         {
         descripcion,
         responsableId,
-        adjuntoId: adjuntoId ?? null,
         },
         reclamoId,
     );
