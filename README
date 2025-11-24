@@ -93,9 +93,7 @@ docker compose up -d
 ```bash
 docker ps
 ```
-
 Debe aparecer:
-
 ```
 mongodb_ticketera
 mongo_express_ticketera
