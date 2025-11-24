@@ -9,11 +9,9 @@ export class EmpleadosService {
   async create(data: Partial<Empleado>): Promise<Empleado> {
     return this.empleadosRepository.create(data);
   }
-
   async findAll(): Promise<Empleado[]> {
     return this.empleadosRepository.findAll();
   }
-
   async findById(id: string): Promise<Empleado> {
     const empleado = await this.empleadosRepository.findById(id);
     if (!empleado) {
@@ -21,15 +19,13 @@ export class EmpleadosService {
     }
     return empleado;
   }
-
   async findByUsuarioId(usuarioId: string): Promise<Empleado | null> {
     return this.empleadosRepository.findByUsuarioId(usuarioId);
   }
-
   async findBySubarea(subareaId: string): Promise<Empleado[]> {
     return this.empleadosRepository.findBySubarea(subareaId);
   }
-
+  
   async update(id: string, data: Partial<Empleado>): Promise<Empleado> {
     const empleado = await this.empleadosRepository.update(id, data);
     if (!empleado) {
@@ -37,7 +33,6 @@ export class EmpleadosService {
     }
     return empleado;
   }
-
   async delete(id: string): Promise<Empleado> {
     const empleado = await this.empleadosRepository.delete(id);
     if (!empleado) {

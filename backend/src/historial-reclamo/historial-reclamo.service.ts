@@ -34,13 +34,10 @@ export class HistorialReclamoService {
       subareaFound = await this.subareaService.findById(subarea);
       if (!subareaFound) throw new NotFoundException('Subárea inválida.');
     }
-
-    let empleadoFound = null;
-    if (empleado) {
-      empleadoFound = await this.empleadoService.findById(empleado);
-      if (!empleadoFound) throw new NotFoundException('Empleado inválido.');
-    }
     */
+        // ...existing code...
+    if (empleado) {await this.empleadoService.findById(empleado);}
+
     return this.historialRepository.create({
       estadoReclamo: estadoReclamo,
       area,
