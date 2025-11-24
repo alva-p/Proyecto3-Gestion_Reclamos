@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
+import { AuthModule } from './auth/auth.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { RolesModule } from './roles/roles.module';
 import { PermisosModule } from './permisos/permisos.module';
@@ -21,8 +23,29 @@ import { EstadoSolicitudModule } from './estado-solicitud/estado-solicitud.modul
 import { ResumenResolucionModule } from './resumen-resolucion/resumen-resolucion.module';
 import { HealthController } from './health/health.controller';
 @Module({
-  imports: [DatabaseModule, UsuariosModule, RolesModule, PermisosModule, ClientesModule, ProyectosModule, TipoProyectoModule, ReclamosModule, HistorialReclamoModule, AreasModule, SubareasModule, EmpleadosModule, TipoReclamoModule, PrioridadModule, CriticidadModule, EstadoReclamoModule, EstadoSolicitudModule, ResumenResolucionModule],
-  controllers: [AppController, HealthController],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    DatabaseModule,
+    AuthModule,
+    UsuariosModule,
+    RolesModule,
+    PermisosModule,
+    ClientesModule,
+    ProyectosModule,
+    TipoProyectoModule,
+    ReclamosModule,
+    HistorialReclamoModule,
+    AreasModule,
+    SubareasModule,
+    EmpleadosModule,
+    TipoReclamoModule,
+    PrioridadModule,
+    CriticidadModule,
+    EstadoReclamoModule,
+    EstadoSolicitudModule,
+    ResumenResolucionModule,
+  ],
+  controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
