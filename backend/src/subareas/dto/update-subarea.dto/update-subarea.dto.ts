@@ -1,1 +1,4 @@
-export class UpdateSubareaDto {}
+export class UpdateSubareaDto {
+	nombre?: string;
+	area?: string;
+}

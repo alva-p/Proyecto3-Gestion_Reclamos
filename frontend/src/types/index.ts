@@ -61,6 +61,7 @@ export interface Claim {
   clientId: string;
   assignedTo?: string;
   assignedArea?: string;
+  assignedSubarea?: string; // Solo visible para usuarios internos
   createdAt: Date;
   updatedAt: Date;
   rating?: number;
@@ -91,4 +92,15 @@ export interface RegistrationRequest {
   createdAt: Date;
   processedAt?: Date;
   processedBy?: string;
+}
+
+export interface Area {
+  id: string;
+  nombre: string;
+}
+
+export interface Subarea {
+  id: string;
+  nombre: string;
+  area: string | Area;
 }

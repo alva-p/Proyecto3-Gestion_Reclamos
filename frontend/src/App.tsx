@@ -13,6 +13,7 @@ import { NewClaimForm } from "./components/NewClaimForm";
 import { RegistrationRequestsView } from "./components/RegistrationRequestsView";
 import { UsersManagement } from "./components/UsersManagement";
 import { UserProfile } from "./components/UserProfile";
+import { SubareasManagement } from "./components/SubareasManagementSimple";
 import { Toaster } from "./components/ui/sonner";
 
 type View =
@@ -22,6 +23,7 @@ type View =
   | "claim-detail"
   | "projects"
   | "new-claim"
+  | "subareas"
   | "requests"
   | "users"
   | "profile";
@@ -99,6 +101,9 @@ const AppContent: React.FC = () => {
 
       case "new-claim":
         return <NewClaimForm />;
+
+      case "subareas":
+        return <SubareasManagement />;
 
       case "requests":
         return <RegistrationRequestsView />;

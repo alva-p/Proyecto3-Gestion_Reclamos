@@ -10,7 +10,8 @@ import {
   Users,
   UserCircle,
   ClipboardList,
-  User
+  User,
+  Layers
 } from 'lucide-react';
 import { roleLabels } from '../utils/translations';
 import { Separator } from './ui/separator';
@@ -50,6 +51,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
     if (user.role === 'administrador') {
       roleItems = [
         { id: 'all-claims', label: 'Reclamos', icon: FileText },
+        { id: 'subareas', label: 'Subáreas', icon: Layers },
         { id: 'requests', label: 'Solicitudes', icon: UserCircle },
         { id: 'users', label: 'Usuarios', icon: Users },
       ];

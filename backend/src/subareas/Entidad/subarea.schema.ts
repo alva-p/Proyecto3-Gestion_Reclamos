@@ -7,8 +7,9 @@ export class Subarea extends Document {
   @Prop({ required: true })
   nombre: string;
 
+  // Guarda el ObjectId de Area como string (referencia), se tipa flexible para evitar errores TS
   @Prop({ type: String, ref: Area.name })
-  area: Area;
+  area: string | Area;
 }
 
 export const SubareaSchema = SchemaFactory.createForClass(Subarea);
