@@ -25,8 +25,8 @@ export class ProyectosService {
     return this.proyectosRepository.findAll(clienteId, tipoProyecto, nombre);
   }
 
-  async findOne(id: string, clienteId?: string): Promise<Proyecto> {
-    const proyecto = await this.proyectosRepository.findOne(id);
+  async findById(id: string, clienteId?: string): Promise<Proyecto> {
+    const proyecto = await this.proyectosRepository.findById(id);
     if (!proyecto) {
       throw new NotFoundException(`Proyecto con ID ${id} no encontrado`);
     }
@@ -38,7 +38,8 @@ export class ProyectosService {
   }
 
   async update(id: string, updateProyectoDto: UpdateProyectoDto, clienteId?: string): Promise<Proyecto> {
-    const proyecto = await this.proyectosRepository.findOne(id);
+    
+    const proyecto = await this.proyectosRepository.findById(id);
     if (!proyecto) {
       throw new NotFoundException(`Proyecto con ID ${id} no encontrado`);
     }
@@ -54,7 +55,7 @@ export class ProyectosService {
   }
 
   async remove(id: string, clienteId?: string): Promise<void> {
-    const proyecto = await this.proyectosRepository.findOne(id);
+    const proyecto = await this.proyectosRepository.findById(id);
     if (!proyecto) {
       throw new NotFoundException(`Proyecto con ID ${id} no encontrado`);
     }

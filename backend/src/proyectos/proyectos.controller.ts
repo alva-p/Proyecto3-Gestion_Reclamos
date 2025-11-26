@@ -29,7 +29,7 @@ export class ProyectosController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     // TODO: Obtener clienteId del token JWT cuando se implemente autenticación
-    return this.proyectosService.findOne(id);
+    return this.proyectosService.findById(id);
   }
 
   @Patch(':id')

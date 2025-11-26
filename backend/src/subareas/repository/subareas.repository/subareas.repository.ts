@@ -27,7 +27,7 @@ export class SubareasRepository {
     return this.subareaModel.find(filter).populate('area').exec();
   }
 
-  async findOne(id: string): Promise<Subarea | null> {
+  async findById(id: string): Promise<Subarea | null> {
     return this.subareaModel.findById(id).populate('area').exec();
   }
 

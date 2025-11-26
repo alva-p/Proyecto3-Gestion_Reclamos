@@ -20,8 +20,8 @@ export class AreasService {
     return this.areasRepository.findAll();
   }
 
-  async findOne(id: string): Promise<Area> {
-    const area = await this.areasRepository.findOne(id);
+  async findById(id: string): Promise<Area> {
+    const area = await this.areasRepository.findById(id);
     if (!area) {
       throw new NotFoundException(`Área con ID ${id} no encontrada`);
     }
@@ -29,21 +29,28 @@ export class AreasService {
   }
 
   async update(id: string, updateAreaDto: UpdateAreaDto): Promise<Area> {
-    if (updateAreaDto.nombre) {
-      const existingArea = await this.areasRepository.findByName(updateAreaDto.nombre);
-      if (existingArea && existingArea._id.toString() !== id) {
-        throw new ConflictException('Ya existe un área con ese nombre');
+    const dto = updateAreaDto as any;
+    if (dto.nombre) {
+      const existingArea = await this.areasRepository.findByName(dto.nombre);
+
+      if (existingArea) {
+        const existingId = String(existingArea._id);
+        if (existingId !== id) {
+          throw new ConflictException('Ya existe un área con ese nombre');
+        }
       }
     }
-    const area = await this.areasRepository.update(id, updateAreaDto);
+    const area = await this.areasRepository.update(id, dto);
     if (!area) {
       throw new NotFoundException(`Área con ID ${id} no encontrada`);
     }
     return area;
   }
 
+
+
   async remove(id: string): Promise<void> {
-    const area = await this.areasRepository.findOne(id);
+    const area = await this.areasRepository.findById(id);
     if (!area) {
       throw new NotFoundException(`Área con ID ${id} no encontrada`);
     }

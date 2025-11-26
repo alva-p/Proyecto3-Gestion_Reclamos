@@ -17,6 +17,7 @@ import { HistorialReclamoService } from '../historial-reclamo/historial-reclamo.
 import { ResumenResolucionService } from '../resumen-resolucion/resumen-resolucion.service';
 import { EmpleadosService } from '../empleados/empleados.service';
 import { AsignarEmpleadoDto } from './dto/asignar-empleado.dto/asignar-empleado.dto';
+import { Subarea } from '../subareas/Entidad/subarea.schema';
 
 @Injectable()
 export class ReclamosService {
@@ -62,16 +63,23 @@ export class ReclamosService {
 
         const criticidadFound = await this.criticidadService.findById(criticidad);
         if (!criticidadFound) throw new NotFoundException('Criticidad inválida.');
-
+        */
         const areaFound = await this.areaService.findById(area);
         if (!areaFound) throw new NotFoundException('Área inválida.');
 
-        let subareaFound = null;
+        let subareaFound: Subarea | null = null;
         if (subarea) {
             subareaFound = await this.subareaService.findById(subarea);
-            if (!subareaFound) throw new NotFoundException('Subárea inválida.');
+            if (!subareaFound) {
+                throw new NotFoundException('Subárea inválida.');
+            }
+            // 🔥 Validación obligatoria
+            if (subareaFound.area.toString() !== area.toString()) {
+                throw new BadRequestException('La subárea no pertenece al área indicada.');
+            }
         }
-        */
+
+
         const estadoInicial = await this.estadoReclamoService.findByNombre('Enviado');
         if (!estadoInicial) {
             throw new NotFoundException('No se encontró el estado inicial "Enviado".');
@@ -168,8 +176,6 @@ export class ReclamosService {
 
         return updated;
     }
-
-
     //CAMBIAR ESTADO
     async cambiarEstado(reclamoId: string, dto: CambiarEstadoReclamoDto) {
         const { nuevoEstadoId, empleadoId  } = dto;

@@ -27,20 +27,26 @@ export class CriticidadService {
     }
     return criticidad;
   }
-
   async update(id: string, updateCriticidadDto: UpdateCriticidadDto): Promise<Criticidad> {
     if (updateCriticidadDto.nombre) {
       const existingCriticidad = await this.criticidadRepository.findByName(updateCriticidadDto.nombre);
-      if (existingCriticidad && existingCriticidad._id.toString() !== id) {
-        throw new ConflictException('Ya existe una criticidad con ese nombre');
+
+      if (existingCriticidad) {
+        const existingId = String(existingCriticidad._id); // 🔥 evita unknown
+        if (existingId !== id) {
+          throw new ConflictException('Ya existe una criticidad con ese nombre');
+        }
       }
     }
+
     const criticidad = await this.criticidadRepository.update(id, updateCriticidadDto);
     if (!criticidad) {
       throw new NotFoundException(`Criticidad con ID ${id} no encontrada`);
     }
+
     return criticidad;
   }
+
 
   async remove(id: string): Promise<void> {
     const criticidad = await this.criticidadRepository.findOne(id);

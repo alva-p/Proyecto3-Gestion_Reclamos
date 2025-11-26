@@ -30,8 +30,8 @@ export class SubareasService {
     return this.subareasRepository.findByArea(areaId, filterInterna);
   }
 
-  async findOne(id: string): Promise<Subarea> {
-    const subarea = await this.subareasRepository.findOne(id);
+  async findById(id: string): Promise<Subarea> {
+    const subarea = await this.subareasRepository.findById(id);
     if (!subarea) {
       throw new NotFoundException(`Subárea con ID ${id} no encontrada`);
     }

@@ -18,7 +18,7 @@ export class AreasRepository {
     return this.areaModel.find().exec();
   }
 
-  async findOne(id: string): Promise<Area | null> {
+  async findById(id: string): Promise<Area | null> {
     return this.areaModel.findById(id).exec();
   }
 

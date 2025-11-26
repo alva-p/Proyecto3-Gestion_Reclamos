@@ -30,17 +30,27 @@ export class PrioridadService {
 
   async update(id: string, updatePrioridadDto: UpdatePrioridadDto): Promise<Prioridad> {
     if (updatePrioridadDto.nombre) {
+
       const existingPrioridad = await this.prioridadRepository.findByName(updatePrioridadDto.nombre);
-      if (existingPrioridad && existingPrioridad._id.toString() !== id) {
-        throw new ConflictException('Ya existe una prioridad con ese nombre');
+
+      if (existingPrioridad) {
+        const existingId = String(existingPrioridad._id); // <<< solución
+
+        if (existingId !== id) {
+          throw new ConflictException('Ya existe una prioridad con ese nombre');
+        }
       }
     }
+
     const prioridad = await this.prioridadRepository.update(id, updatePrioridadDto);
+
     if (!prioridad) {
       throw new NotFoundException(`Prioridad con ID ${id} no encontrada`);
     }
+
     return prioridad;
   }
+
 
   async remove(id: string): Promise<void> {
     const prioridad = await this.prioridadRepository.findOne(id);

@@ -18,6 +18,7 @@ import { CambiarEstadoReclamoDto } from '../estado-reclamo/dto/cambiar-estado-re
 import { AsignarEmpleadoDto } from './dto/asignar-empleado.dto/asignar-empleado.dto';
 import { CambiarAreaDto } from './dto/cambio-area.dto/cambio-area.dto';
 import { CrearResumenResolucionDto } from '../resumen-resolucion/dto/create-resumen-resolucion.dto/create-resumen-resolucion.dto';
+import { sanitizeReclamoForClient } from '../common/helpers/reclamo-serializer';
 
 // @UseGuards(AuthGuard)  <-- CUANDO IMPLEMENTES JWT
 @Controller('reclamos')
@@ -42,6 +43,18 @@ export class ReclamosController {
   findById(@Param('id') id: string) {
     return this.reclamosService.findById(id);
   }
+
+  @Get(':id')
+  async getReclamoCliente(@Param('id') id: string, @Req() req) {
+    const reclamo = await this.reclamosService.findById(id);
+
+    if (req.user.rol === 'cliente') {
+      return sanitizeReclamoForClient(reclamo);
+    }
+
+    return reclamo;
+  }
+
 
   // 4 - Actualizar datos base
   @Patch(':id')

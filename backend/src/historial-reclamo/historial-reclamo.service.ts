@@ -4,6 +4,8 @@ import { EstadoReclamoService } from '../estado-reclamo/estado-reclamo.service';
 import { AreasService } from '../areas/areas.service';
 import { SubareasService } from '../subareas/subareas.service';
 import { EmpleadosService } from '../empleados/empleados.service';
+import { sanitizeHistorialForClient } from '../common/helpers/historial-serializer';
+
 
 @Injectable()
 export class HistorialReclamoService {
@@ -61,4 +63,10 @@ export class HistorialReclamoService {
   async findByReclamo(reclamoId: string) {
     return this.historialRepository.findByReclamo(reclamoId);
   }
+
+  async findHistorialForClient(reclamoId: string) {
+    const historial = await this.historialRepository.findByReclamo(reclamoId);  
+    return sanitizeHistorialForClient(historial);
+  }
+
 }
