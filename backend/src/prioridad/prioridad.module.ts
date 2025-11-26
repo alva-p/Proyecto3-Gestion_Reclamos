@@ -7,10 +7,12 @@ import { Prioridad, PrioridadSchema } from './Entidad/prioridad.schema';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Prioridad.name, schema: PrioridadSchema }]),
+    MongooseModule.forFeature([
+      { name: Prioridad.name, schema: PrioridadSchema },
+    ]),
   ],
   controllers: [PrioridadController],
   providers: [PrioridadService, PrioridadRepository],
-  exports: [PrioridadService, PrioridadRepository],
+  exports: [PrioridadService],
 })
 export class PrioridadModule {}

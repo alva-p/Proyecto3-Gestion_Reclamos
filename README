@@ -1,0 +1,158 @@
+# 📄 **README — Configuración de MongoDB + NestJS**
+
+Este documento explica cómo levantar el entorno completo del backend utilizando Docker, MongoDB, Mongo Express y NestJS.
+Está preparado para que cualquier miembro del equipo pueda replicarlo sin problemas.
+
+---
+
+# 🚀 **1. Requisitos previos**
+
+Antes de empezar necesitás:
+
+* **Docker Desktop** instalado
+  [https://www.docker.com/products/docker-desktop/](https://www.docker.com/products/docker-desktop/)
+
+* **Node.js 18+**
+
+* **NestJS CLI**
+
+  ```bash
+  npm i -g @nestjs/cli
+  ```
+
+---
+
+# 🚢 **2. Levantar MongoDB con Docker Compose (Recomendado)**
+
+Esta es la forma ideal porque:
+
+✔ Todo queda versionado
+✔ Un solo comando levanta la base
+✔ Podés agregar Redis, Mongo Express, etc.
+✔ Todos los devs usan la misma configuración
+
+---
+
+# 📦 **3. Crear archivo `docker-compose.yml` en la raíz del backend**
+
+Creá este archivo **en `/backend`**:
+
+```yaml
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: mongodb_ticketera
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+    volumes:
+      - mongodb_data:/data/db
+
+  mongo_express:
+    image: mongo-express:latest
+    container_name: mongo_express_ticketera
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: admin123
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_MONGODB_AUTH_DATABASE: admin
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: true
+      ME_CONFIG_SITE_COOKIESECRET: "secret123"
+      ME_CONFIG_SITE_SESSIONSECRET: "session123"
+    depends_on:
+      - mongodb
+
+volumes:
+  mongodb_data:
+```
+
+Este Compose levanta:
+
+* **MongoDB** → puerto **27017**
+
+# ▶️ **4. Levantar los contenedores**
+
+Ejecutá:
+
+```bash
+docker compose up -d
+```
+
+---
+
+# 🔍 **5. Verificar que Mongo está corriendo**
+
+```bash
+docker ps
+```
+Debe aparecer:
+```
+mongodb_ticketera
+mongo_express_ticketera
+```
+
+---
+
+# 🌐 **6. Acceder a Mongo Express. Conectarse desde consola**
+
+```bash
+docker exec -it mongodb_ticketera mongosh -u admin -p admin123
+```
+
+Si ves `test>`, estás dentro.
+
+---
+
+# 🧰 **8. Configurar NestJS para conectarse a MongoDB**
+
+En el archivo **`.env`** poné:
+
+```
+MONGO_URI=mongodb://admin:admin123@localhost:27017
+PORT=3000
+```
+
+# 🟢 **Cómo levantar el backend**
+
+En la raíz del backend:
+
+```bash
+npm install
+npm run start:dev
+```
+
+Si todo está bien, la terminal mostrará:
+
+```
+🚀 Servidor levantado correctamente
+🌐 Backend corriendo en: http://localhost:3000
+🩺 Health check disponible en: http://localhost:3000/health
+```
+
+---
+
+# 🎉 **Listo! Ambiente completo funcionando**
+
+Cualquier integrante del equipo puede ahora:
+
+1. Clonar el repo
+2. Ejecutar `docker compose up -d`
+3. Crear su `.env`
+4. Hacer `npm run start:dev`
+5. Acceder a:
+
+   * Backend → [http://localhost:3000](http://localhost:3000)
+   * Health → [http://localhost:3000/health](http://localhost:3000/health)
+   * Mongo Express → [http://localhost:8081](http://localhost:8081)
+
+---
+
+Si querés, te genero también un **README separado para el frontend**, o uno global para todo el proyecto 🚀.

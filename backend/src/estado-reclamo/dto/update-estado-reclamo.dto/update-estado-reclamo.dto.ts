@@ -1,4 +1,9 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateEstadoReclamoDto } from '../create-estado-reclamo.dto/create-estado-reclamo.dto';
+import { IsString, IsOptional, MinLength, MaxLength } from 'class-validator';
 
-export class UpdateEstadoReclamoDto extends PartialType(CreateEstadoReclamoDto) {}
+export class UpdateEstadoReclamoDto {
+  @IsString()
+  @IsOptional()
+  @MinLength(3)
+  @MaxLength(50)
+  nombre?: string;
+}

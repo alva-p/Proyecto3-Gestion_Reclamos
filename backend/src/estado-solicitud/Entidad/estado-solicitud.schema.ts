@@ -1,9 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-@Schema()
+@Schema({ timestamps: true })
 export class EstadoSolicitud extends Document {
-  @Prop({ required: true })
+  @Prop({ required: true, unique: true })
   nombre: string;
 
   @Prop()

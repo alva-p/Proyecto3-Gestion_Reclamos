@@ -1,57 +1,54 @@
-import { Injectable, NotFoundException, ConflictException, OnModuleInit } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { EstadoReclamoRepository } from './repository/estado-reclamo.repository/estado-reclamo.repository';
 import { CreateEstadoReclamoDto } from './dto/create-estado-reclamo.dto/create-estado-reclamo.dto';
 import { UpdateEstadoReclamoDto } from './dto/update-estado-reclamo.dto/update-estado-reclamo.dto';
-import { EstadoReclamo } from './Entidad/estado-reclamo.schema';
 
 @Injectable()
-export class EstadoReclamoService implements OnModuleInit {
-  constructor(private readonly estadoReclamoRepository: EstadoReclamoRepository) {}
+export class EstadoReclamoService {
+  constructor(private readonly repo: EstadoReclamoRepository) {}
 
-  async onModuleInit() {
-    // Crear estados funcionales del reclamo al iniciar el módulo
-    await this.estadoReclamoRepository.seedEstados();
+  async findAll() {
+    return this.repo.findAll();
   }
 
-  async create(createEstadoReclamoDto: CreateEstadoReclamoDto): Promise<EstadoReclamo> {
-    const existingEstadoReclamo = await this.estadoReclamoRepository.findByName(createEstadoReclamoDto.nombre);
-    if (existingEstadoReclamo) {
-      throw new ConflictException('Ya existe un estado de reclamo con ese nombre');
-    }
-    return this.estadoReclamoRepository.create(createEstadoReclamoDto);
+  async findById(id: string) {
+    const estado = await this.repo.findById(id);
+    if (!estado) throw new BadRequestException('Estado no encontrado.');
+    return estado;
   }
 
-  async findAll(): Promise<EstadoReclamo[]> {
-    return this.estadoReclamoRepository.findAll();
+  async findByNombre(nombre: string) {
+    return this.repo.findByNombre(nombre);
   }
 
-  async findOne(id: string): Promise<EstadoReclamo> {
-    const estadoReclamo = await this.estadoReclamoRepository.findOne(id);
-    if (!estadoReclamo) {
-      throw new NotFoundException(`Estado de reclamo con ID ${id} no encontrado`);
-    }
-    return estadoReclamo;
+  async create(data: CreateEstadoReclamoDto) {
+    return this.repo.create(data);
   }
 
-  async update(id: string, updateEstadoReclamoDto: UpdateEstadoReclamoDto): Promise<EstadoReclamo> {
-    if (updateEstadoReclamoDto.nombre) {
-      const existingEstadoReclamo = await this.estadoReclamoRepository.findByName(updateEstadoReclamoDto.nombre);
-      if (existingEstadoReclamo && existingEstadoReclamo._id.toString() !== id) {
-        throw new ConflictException('Ya existe un estado de reclamo con ese nombre');
-      }
-    }
-    const estadoReclamo = await this.estadoReclamoRepository.update(id, updateEstadoReclamoDto);
-    if (!estadoReclamo) {
-      throw new NotFoundException(`Estado de reclamo con ID ${id} no encontrado`);
-    }
-    return estadoReclamo;
+  async update(id: string, data: UpdateEstadoReclamoDto) {
+    return this.repo.update(id, data);
   }
 
-  async remove(id: string): Promise<void> {
-    const estadoReclamo = await this.estadoReclamoRepository.findOne(id);
-    if (!estadoReclamo) {
-      throw new NotFoundException(`Estado de reclamo con ID ${id} no encontrado`);
+  async delete(id: string) {
+    return this.repo.delete(id);
+  }
+
+  async seedEstados() {
+    const estados = [
+      'Enviado',
+      'En revisión',
+      'Asignado',
+      'En proceso',
+      'Solucionado',
+      'Cerrado',
+      'Cancelado',
+    ];
+
+    for (const nombre of estados) {
+      const existe = await this.repo.findByNombre(nombre);
+      if (!existe) await this.repo.create({ nombre });
     }
-    await this.estadoReclamoRepository.remove(id);
+
+    return { message: 'Estados cargados correctamente' };
   }
 }

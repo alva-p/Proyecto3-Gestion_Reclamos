@@ -7,10 +7,12 @@ import { Criticidad, CriticidadSchema } from './Entidad/criticidad.schema';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Criticidad.name, schema: CriticidadSchema }]),
+    MongooseModule.forFeature([
+      { name: Criticidad.name, schema: CriticidadSchema },
+    ]),
   ],
   controllers: [CriticidadController],
   providers: [CriticidadService, CriticidadRepository],
-  exports: [CriticidadService, CriticidadRepository],
+  exports: [CriticidadService],
 })
 export class CriticidadModule {}

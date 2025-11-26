@@ -7,10 +7,12 @@ import { TipoReclamo, TipoReclamoSchema } from './Entidad/tipo-reclamo.schema';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: TipoReclamo.name, schema: TipoReclamoSchema }]),
+    MongooseModule.forFeature([
+      { name: TipoReclamo.name, schema: TipoReclamoSchema },
+    ]),
   ],
   controllers: [TipoReclamoController],
   providers: [TipoReclamoService, TipoReclamoRepository],
-  exports: [TipoReclamoService, TipoReclamoRepository],
+  exports: [TipoReclamoService],
 })
 export class TipoReclamoModule {}
