@@ -132,50 +132,8 @@ export class ReclamosService {
         return reclamo;
     }
     //ACTUALIZAR DATOS BASE
-    async update(id: string, dto: any) {
-    const reclamo = await this.reclamosRepository.findById(id);
-        if (!reclamo) throw new NotFoundException('Reclamo no encontrado.');
 
-        // No permitir modificar reclamos cerrados
-        if (reclamo.estadoActual?.nombre === 'Cerrado' || reclamo.estadoActual?.nombre === 'Cancelado') {
-            throw new ConflictException('No se puede modificar un reclamo cerrado o cancelado.');
-        }
 
-        // Detectar cambios relevantes
-        const cambios: string[] = [];
-
-        if (dto.estadoActual && dto.estadoActual !== reclamo.estadoActual._id as string) {
-            cambios.push('Cambio de estado');
-        }
-
-        if (dto.area && dto.area !== reclamo.area._id as string) {
-            cambios.push('Cambio de área');
-        }
-
-        if (dto.subarea && dto.subarea !== reclamo.subarea?._id as string) {
-            cambios.push('Cambio de subárea');
-        }
-
-        if (dto.asignadoActual && dto.asignadoActual !== reclamo.asignadoActual?._id as string) {
-            cambios.push('Cambio de responsable');
-        }
-
-        // Actualizar reclamo
-        const updated = await this.reclamosRepository.update(id, dto);
-        if (!updated) throw new NotFoundException('No se pudo actualizar el reclamo.');
-        // Registrar cambios relevantes en historial
-        for (const cambio of cambios) {
-            await this.historialReclamoService.createAndAttach(id, {
-            detalleAccion: cambio,
-            estadoReclamo: updated.estadoActual,
-            area: updated.area,
-            subarea: updated.subarea,
-            empleado: updated.asignadoActual ?? null,
-            });
-        }
-
-        return updated;
-    }
     //CAMBIAR ESTADO
     async cambiarEstado(reclamoId: string, dto: CambiarEstadoReclamoDto) {
         const { nuevoEstadoId, empleadoId  } = dto;
@@ -189,12 +147,12 @@ export class ReclamosService {
         if (reclamo.estadoActual?.nombre === 'Cerrado') {
             throw new ConflictException('El reclamo ya está cerrado.');
         }
-        /*
+
         if (empleadoId) {
             const empleado = await this.subareaService.findEmpleadoById(empleadoId);
             if (!empleado) throw new NotFoundException('Empleado no encontrado.');
         }
-        */
+
         await this.reclamosRepository.updateEstado(reclamoId, nuevoEstadoId);
 
         await this.historialReclamoService.createAndAttach(reclamoId, {
@@ -218,10 +176,10 @@ export class ReclamosService {
         if (reclamo.estadoActual?.nombre === 'Cerrado') {
             throw new ConflictException('No se puede asignar un empleado a un reclamo cerrado.');
         }
-        /*
+
         const empleado = await this.empleadosService.findById(empleadoId);
         if (!empleado) throw new NotFoundException('Empleado no encontrado.');
-        */
+
         await this.reclamosRepository.asignarEmpleado(reclamoId, empleadoId);
 
         await this.historialReclamoService.createAndAttach(reclamoId, {
@@ -237,21 +195,28 @@ export class ReclamosService {
     //CAMBIAR ÁREA
     async cambiarArea(reclamoId: string, dto: any) {
         const { areaId, subareaId, empleadoId } = dto;
-
         const reclamo = await this.reclamosRepository.findById(reclamoId);
         if (!reclamo) throw new NotFoundException('Reclamo no encontrado.');
-        /*
+
+        // 1. Validar área nueva
         const area = await this.areaService.findById(areaId);
         if (!area) throw new NotFoundException('Área inválida.');
+        // 2. Validar subárea (si viene)
+        let subareaFound: any = null;
 
-        let subarea = null;
         if (subareaId) {
-            subarea = await this.subareaService.findById(subareaId);
-            if (!subarea) throw new NotFoundException('Subárea inválida.');
+            subareaFound = await this.subareaService.findById(subareaId);
+            if (!subareaFound) {
+            throw new NotFoundException('Subárea inválida.');
+            }
+            // VALIDACIÓN OBLIGATORIA DEL PROBLEMA 3
+            if (subareaFound.area.toString() !== areaId.toString()) {
+            throw new BadRequestException('La subárea no pertenece al área indicada.');
+            }
         }
-        */
-        await this.reclamosRepository.cambiarArea(reclamoId, areaId, subareaId,);
-
+        // 3. Actualizar área/subárea
+        await this.reclamosRepository.cambiarArea(reclamoId, areaId, subareaId ?? null);
+        // 4. Registrar historial
         await this.historialReclamoService.createAndAttach(reclamoId, {
             detalleAccion: 'Cambio de área/subárea.',
             empleado: empleadoId ?? null,
@@ -262,6 +227,7 @@ export class ReclamosService {
 
         return this.reclamosRepository.findById(reclamoId);
     }
+
 
     //CERRAR RECLAMO
     async cerrarReclamo(reclamoId: string, dto: any) {
