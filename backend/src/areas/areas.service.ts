@@ -20,6 +20,11 @@ export class AreasService {
     return this.areasRepository.findAll();
   }
 
+  // Alias para mantener compatibilidad con el controller
+  async findOne(id: string): Promise<Area> {
+    return this.findById(id);
+  }
+
   async findById(id: string): Promise<Area> {
     const area = await this.areasRepository.findById(id);
     if (!area) {

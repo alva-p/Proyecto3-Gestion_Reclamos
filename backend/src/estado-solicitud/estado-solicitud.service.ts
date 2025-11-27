@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { EstadoSolicitudRepository } from './repository/estado-solicitud.repository';
 import { EstadoSolicitud } from './Entidad/estado-solicitud.schema';
 
@@ -7,10 +7,14 @@ export class EstadoSolicitudService {
   constructor(private readonly estadoSolicitudRepository: EstadoSolicitudRepository) {}
 
   async create(data: Partial<EstadoSolicitud>): Promise<EstadoSolicitud> {
+    const { nombre } = data;
+    if (!nombre) {
+      throw new BadRequestException('El nombre del estado es obligatorio');
+    }
     // Verificar que el nombre no exista
-    const existingEstado = await this.estadoSolicitudRepository.findByName(data.nombre);
+    const existingEstado = await this.estadoSolicitudRepository.findByName(nombre);
     if (existingEstado) {
-      throw new ConflictException(`El estado ${data.nombre} ya existe`);
+      throw new ConflictException(`El estado ${nombre} ya existe`);
     }
     return this.estadoSolicitudRepository.create(data);
   }

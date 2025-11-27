@@ -51,7 +51,11 @@ export class ProyectosService {
     if (updateProyectoDto.clienteId && updateProyectoDto.clienteId !== proyecto.clienteId) {
       throw new BadRequestException('No se puede cambiar el cliente del proyecto');
     }
-    return this.proyectosRepository.update(id, updateProyectoDto);
+    const updatedProyecto = await this.proyectosRepository.update(id, updateProyectoDto);
+    if (!updatedProyecto) {
+      throw new NotFoundException(`Proyecto con ID ${id} no encontrado`);
+    }
+    return updatedProyecto;
   }
 
   async remove(id: string, clienteId?: string): Promise<void> {

@@ -30,6 +30,11 @@ export class SubareasService {
     return this.subareasRepository.findByArea(areaId, filterInterna);
   }
 
+  // Alias para compatibilidad con el controller
+  async findOne(id: string): Promise<Subarea> {
+    return this.findById(id);
+  }
+
   async findById(id: string): Promise<Subarea> {
     const subarea = await this.subareasRepository.findById(id);
     if (!subarea) {
@@ -44,7 +49,7 @@ export class SubareasService {
         updateSubareaDto.nombre,
         updateSubareaDto.area,
       );
-      if (existingSubarea && existingSubarea._id.toString() !== id) {
+      if (existingSubarea && (existingSubarea._id as any).toString() !== id) {
         throw new ConflictException('Ya existe una subárea con ese nombre en el área especificada');
       }
     }
@@ -56,7 +61,7 @@ export class SubareasService {
   }
 
   async remove(id: string): Promise<void> {
-    const subarea = await this.subareasRepository.findOne(id);
+    const subarea = await this.subareasRepository.findById(id);
     if (!subarea) {
       throw new NotFoundException(`Subárea con ID ${id} no encontrada`);
     }

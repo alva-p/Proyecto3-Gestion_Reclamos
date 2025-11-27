@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PermisosRepository } from './repository/permisos.repository';
 import { Permiso } from './Entidad/permiso.schema';
 
@@ -7,10 +7,14 @@ export class PermisosService {
   constructor(private readonly permisosRepository: PermisosRepository) {}
 
   async create(data: Partial<Permiso>): Promise<Permiso> {
+    const { nombre } = data;
+    if (!nombre) {
+      throw new BadRequestException('El nombre del permiso es obligatorio');
+    }
     // Verificar que el nombre no exista
-    const existingPermiso = await this.permisosRepository.findByName(data.nombre);
+    const existingPermiso = await this.permisosRepository.findByName(nombre);
     if (existingPermiso) {
-      throw new ConflictException(`El permiso ${data.nombre} ya existe`);
+      throw new ConflictException(`El permiso ${nombre} ya existe`);
     }
     return this.permisosRepository.create(data);
   }

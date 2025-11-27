@@ -31,7 +31,7 @@ export class TipoReclamoService {
   async update(id: string, updateTipoReclamoDto: UpdateTipoReclamoDto): Promise<TipoReclamo> {
     if (updateTipoReclamoDto.nombre) {
       const existingTipoReclamo = await this.tipoReclamoRepository.findByName(updateTipoReclamoDto.nombre);
-      if (existingTipoReclamo && existingTipoReclamo._id.toString() !== id) {
+      if (existingTipoReclamo && (existingTipoReclamo._id as any).toString() !== id) {
         throw new ConflictException('Ya existe un tipo de reclamo con ese nombre');
       }
     }
