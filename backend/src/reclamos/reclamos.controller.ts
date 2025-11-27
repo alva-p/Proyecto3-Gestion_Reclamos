@@ -55,7 +55,6 @@ export class ReclamosController {
     return reclamo;
   }
 
-
   // 4 - Actualizar datos base
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateReclamoDto, @Req() req) {
