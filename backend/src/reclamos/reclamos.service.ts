@@ -18,6 +18,7 @@ import { ResumenResolucionService } from '../resumen-resolucion/resumen-resoluci
 import { EmpleadosService } from '../empleados/empleados.service';
 import { AsignarEmpleadoDto } from './dto/asignar-empleado.dto/asignar-empleado.dto';
 import { Subarea } from '../subareas/Entidad/subarea.schema';
+import { UpdateReclamoDto } from './dto/update-reclamo.dto/update-reclamo.dto';
 
 @Injectable()
 export class ReclamosService {
@@ -132,6 +133,13 @@ export class ReclamosService {
         return reclamo;
     }
     //ACTUALIZAR DATOS BASE
+    async update(id: string, dto: UpdateReclamoDto) {
+        const reclamo = await this.reclamosRepository.update(id, dto);
+        if (!reclamo) {
+            throw new NotFoundException('Reclamo no encontrado.');
+        }
+        return reclamo;
+    }
 
 
     //CAMBIAR ESTADO
@@ -149,7 +157,7 @@ export class ReclamosService {
         }
 
         if (empleadoId) {
-            const empleado = await this.subareaService.findEmpleadoById(empleadoId);
+            const empleado = await this.empleadosService.findById(empleadoId);
             if (!empleado) throw new NotFoundException('Empleado no encontrado.');
         }
 

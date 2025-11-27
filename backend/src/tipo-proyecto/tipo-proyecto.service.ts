@@ -31,7 +31,7 @@ export class TipoProyectoService {
   async update(id: string, updateTipoProyectoDto: UpdateTipoProyectoDto): Promise<TipoProyecto> {
     if (updateTipoProyectoDto.nombre) {
       const existingTipoProyecto = await this.tipoProyectoRepository.findByName(updateTipoProyectoDto.nombre);
-      if (existingTipoProyecto && existingTipoProyecto._id.toString() !== id) {
+      if (existingTipoProyecto && (existingTipoProyecto._id as any).toString() !== id) {
         throw new ConflictException('Ya existe un tipo de proyecto con ese nombre');
       }
     }

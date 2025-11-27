@@ -45,11 +45,14 @@ export class AuthService {
 
     // Poblar el rol para obtener el nombre
     await usuario.populate('rol');
-    const rolNombre = typeof usuario.rol === 'object' ? usuario.rol.nombre : usuario.rol;
+    const rolNombre =
+      typeof usuario.rol === 'object' && usuario.rol !== null
+        ? (usuario.rol as any).nombre
+        : (usuario.rol as any)?.toString?.();
 
     // Generar token JWT
     const payload = {
-      sub: usuario._id.toString(),
+      sub: (usuario._id as any).toString(),
       correo: usuario.correo,
       rol: rolNombre,
     };
@@ -90,15 +93,15 @@ export class AuthService {
       nombre,
       correo,
       contraseña: hashedPassword,
-      rol: empleadoRol._id.toString(),
+      rol: (empleadoRol._id as any).toString(),
       activo: true,
     });
 
     // Crear empleado
     const empleado = await this.empleadosService.create({
-      usuarioId: usuario._id.toString(),
+      usuarioId: (usuario._id as any).toString(),
       puesto,
-      subarea: subareaId,
+      subarea: subareaId as any,
     });
 
     return {
@@ -145,17 +148,17 @@ export class AuthService {
       nombre,
       correo,
       contraseña: hashedPassword,
-      rol: clienteRol._id.toString(),
+      rol: (clienteRol._id as any).toString(),
       activo: false, // Inactivo hasta aprobación
     });
 
     // Crear cliente
     const cliente = await this.clientesService.create({
-      usuarioId: usuario._id.toString(),
+      usuarioId: (usuario._id as any).toString(),
       empresa,
       telefono,
       direccion,
-      estadoSolicitud: estadoPendiente._id.toString(),
+      estadoSolicitud: (estadoPendiente._id as any).toString(),
     });
 
     return {

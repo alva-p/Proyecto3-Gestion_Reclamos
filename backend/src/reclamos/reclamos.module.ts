@@ -20,7 +20,7 @@ import { ResumenResolucionModule } from '../resumen-resolucion/resumen-resolucio
     MongooseModule.forFeature([
       { name: Reclamo.name, schema: ReclamoSchema },
     ]),
-    ProyectosModule,
+    forwardRef(() => ProyectosModule),
     TipoReclamoModule,
     PrioridadModule,
     CriticidadModule,
