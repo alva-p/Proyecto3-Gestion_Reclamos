@@ -14,7 +14,7 @@ import { EmpleadosModule } from '../empleados/empleados.module';
 import { HistorialReclamoModule } from '../historial-reclamo/historial-reclamo.module';
 import { EstadoReclamoModule } from '../estado-reclamo/estado-reclamo.module';
 import { ResumenResolucionModule } from '../resumen-resolucion/resumen-resolucion.module';
-
+import { ClientesModule } from '../clientes/clientes.module';
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -27,6 +27,7 @@ import { ResumenResolucionModule } from '../resumen-resolucion/resumen-resolucio
     AreasModule,
     SubareasModule,
     EmpleadosModule,
+    ClientesModule,
     forwardRef(() => HistorialReclamoModule),
     forwardRef(() => EstadoReclamoModule),
     forwardRef(() => ResumenResolucionModule),

@@ -21,13 +21,13 @@ export class ResumenResolucionRepository {
   async findById(id: string): Promise<ResumenResolucionDocument | null> {
     return this.resumenModel
       .findById(new Types.ObjectId(id))
-      .populate('empleado')
+      .populate('responsable')
       .exec();
   }
   async findAll(filters: any = {}): Promise<ResumenResolucionDocument[]> {
     return this.resumenModel
       .find(filters)
-      .populate('empleado')
+      .populate('responsable')
       .exec();
   }
 

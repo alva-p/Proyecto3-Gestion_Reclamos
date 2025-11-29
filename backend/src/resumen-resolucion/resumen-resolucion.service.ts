@@ -16,30 +16,22 @@ export class ResumenResolucionService {
 
   async crearResumen(dto: CrearResumenResolucionDto, reclamoId: string) {
     const reclamo = await this.reclamosRepo.findById(reclamoId);
-
     if (!reclamo) {
       throw new NotFoundException('El reclamo no existe.');
     }
-
-    if (reclamo.estadoActual?.nombre !== 'Cerrado') {
-      throw new BadRequestException(
-        'Sólo se puede registrar un resumen cuando el reclamo está cerrado.',
-      );
-    }
-
     const resumen = await this.resumenRepo.create({
       reclamoId,
       descripcion: dto.descripcion,
       responsable: dto.responsableId,
       fechaHora: new Date(),
     });
-
     await this.reclamosRepo.update(reclamoId, {
       resumenResolucionId: resumen._id,
     });
 
     return resumen;
   }
+
 
   async findByReclamo(reclamoId: string) {
     const reclamo = await this.reclamosRepo.findById(reclamoId);

@@ -19,25 +19,25 @@ export class Reclamo extends Document {
   @Prop({ required: true })
   descripcion: string;
 
-  @Prop({ type: String, ref: TipoReclamo.name })
-  tipoReclamo: TipoReclamo;
+  @Prop({ type: Types.ObjectId, ref: TipoReclamo.name })
+  tipoReclamo: string;
 
-  @Prop({ type: String, ref: Prioridad.name })
+  @Prop({ type: Types.ObjectId, ref: Prioridad.name })
   prioridad: Prioridad;
 
-  @Prop({ type: String, ref: Criticidad.name })
+  @Prop({ type: Types.ObjectId, ref: Criticidad.name })
   criticidad: Criticidad;
 
-  @Prop({ type: String, ref: EstadoReclamo.name })
+  @Prop({ type: Types.ObjectId, ref: EstadoReclamo.name })
   estadoActual: EstadoReclamo;
 
-  @Prop({ type: String, ref: Area.name })
+  @Prop({ type: Types.ObjectId, ref: Area.name })
   area: Area;
 
-  @Prop({ type: String, ref: Subarea.name })
+  @Prop({ type: Types.ObjectId, ref: Subarea.name })
   subarea: Subarea;
 
-  @Prop({ type: String, ref: Empleado.name })
+  @Prop({ type: Types.ObjectId, ref: Empleado.name })
   asignadoActual: Empleado;
 
   @Prop({ type: [Types.ObjectId], ref: 'HistorialReclamo', default: [] })

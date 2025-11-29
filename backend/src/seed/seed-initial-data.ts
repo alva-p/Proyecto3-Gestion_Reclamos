@@ -1,21 +1,27 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { RolesService } from './roles/roles.service';
-import { EstadoSolicitudService } from './estado-solicitud/estado-solicitud.service';
 import * as bcrypt from 'bcrypt';
-import { UsuariosService } from './usuarios/usuarios.service';
+import { RolesService } from '../roles/roles.service';
+import { EstadoSolicitudService } from '../estado-solicitud/estado-solicitud.service';
+import { UsuariosService } from '../usuarios/usuarios.service';
+import { EstadoReclamoService } from '../estado-reclamo/estado-reclamo.service';
 
-async function bootstrap() {
-  const app = await NestFactory.createApplicationContext(AppModule);
 
-  const rolesService = app.get(RolesService);
-  const estadoSolicitudService = app.get(EstadoSolicitudService);
-
-  const usuariosService = app.get(UsuariosService);
-
+export async function seedInitialData(
+  rolesService: RolesService,
+  estadoSolicitudService: EstadoSolicitudService,
+  usuariosService: UsuariosService,
+  estadoReclamoService: EstadoReclamoService,
+) {
   console.log('🌱 Iniciando seed de datos...');
 
-  // Crear roles
+    // ===== ESTADOS DE RECLAMO =====
+    try {
+      await estadoReclamoService.seedEstados();
+      console.log('✅ Estados de reclamo seedados correctamente');
+    } catch (error: any) {
+      console.error('❌ Error seedeando estados de reclamo:', error.message);
+    }
+
+  // ===== ROLES =====
   try {
     const adminRol = await rolesService.findByName('ADMIN');
     if (!adminRol) {
@@ -28,7 +34,7 @@ async function bootstrap() {
     } else {
       console.log('ℹ️  Rol ADMIN ya existe');
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error creando rol ADMIN:', error.message);
   }
 
@@ -44,7 +50,7 @@ async function bootstrap() {
     } else {
       console.log('ℹ️  Rol EMPLEADO ya existe');
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error creando rol EMPLEADO:', error.message);
   }
 
@@ -60,11 +66,11 @@ async function bootstrap() {
     } else {
       console.log('ℹ️  Rol CLIENTE ya existe');
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error creando rol CLIENTE:', error.message);
   }
 
-  // Crear estados de solicitud
+  // ===== ESTADOS DE SOLICITUD =====
   try {
     const pendiente = await estadoSolicitudService.findByName('PENDIENTE');
     if (!pendiente) {
@@ -76,7 +82,7 @@ async function bootstrap() {
     } else {
       console.log('ℹ️  Estado PENDIENTE ya existe');
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error creando estado PENDIENTE:', error.message);
   }
 
@@ -91,7 +97,7 @@ async function bootstrap() {
     } else {
       console.log('ℹ️  Estado APROBADO ya existe');
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error creando estado APROBADO:', error.message);
   }
 
@@ -106,22 +112,19 @@ async function bootstrap() {
     } else {
       console.log('ℹ️  Estado RECHAZADO ya existe');
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error creando estado RECHAZADO:', error.message);
   }
 
-  // Crear usuario ADMIN
-  // Crear usuario ADMIN
+  // ===== USUARIO ADMIN INICIAL =====
   try {
     const adminEmail = 'admin@sistema.com';
     const existingAdmin = await usuariosService.findByEmail(adminEmail);
 
     if (!existingAdmin) {
-      // Volvemos a buscar el rol ADMIN
       const adminRol = await rolesService.findByName('ADMIN');
-
       if (!adminRol) {
-        throw new Error('Rol ADMIN no encontrado. Verifica que el seed de roles se ejecutó correctamente.');
+        throw new Error('Rol ADMIN no encontrado para crear usuario admin');
       }
 
       const hashedPassword = await bcrypt.hash('Admin123!', 10);
@@ -142,9 +145,5 @@ async function bootstrap() {
     console.error('❌ Error creando usuario ADMIN:', error.message);
   }
 
-
-  console.log('🎉 Seed completado exitosamente');
-  await app.close();
+  console.log('🎉 Seed completado (roles, estados solicitud y admin)');
 }
-
-bootstrap();

@@ -6,7 +6,7 @@ import { ProyectosService } from './proyectos.service';
 import { ProyectosRepository } from './repository/proyectos.repository/proyectos.repository';
 import { TipoProyectoModule } from '../tipo-proyecto/tipo-proyecto.module';
 import { ReclamosModule } from '../reclamos/reclamos.module';
-
+import { ClientesModule } from '../clientes/clientes.module';
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -14,6 +14,7 @@ import { ReclamosModule } from '../reclamos/reclamos.module';
     ]),
     TipoProyectoModule,
     forwardRef(() => ReclamosModule),
+    ClientesModule,
   ],
   controllers: [ProyectosController],
   providers: [ProyectosService, ProyectosRepository],

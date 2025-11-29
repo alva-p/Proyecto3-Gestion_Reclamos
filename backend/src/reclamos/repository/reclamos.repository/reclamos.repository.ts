@@ -13,19 +13,32 @@ export class ReclamosRepository {
   async create(data: any): Promise<ReclamoDocument> {
     return this.reclamoModel.create(data);
   }
-
+  /*
   async findById(id: string): Promise<ReclamoDocument | null> {
     return this.reclamoModel
       .findById(new Types.ObjectId(id))
       .populate('cliente proyecto area subarea estado empleadoAsignado')
       .exec();
   }
-
   // Listado con filtros
   async findAll(filters: any = {}): Promise<ReclamoDocument[]> {
     return this.reclamoModel
       .find(filters)
       .populate('cliente proyecto area subarea estado empleadoAsignado')
+      .exec();
+  }
+  */
+  async findById(id: string): Promise<ReclamoDocument | null> {
+    return this.reclamoModel
+      .findById(new Types.ObjectId(id))
+      .populate('tipoReclamo prioridad criticidad area subarea estadoActual asignadoActual historialIds resumenResolucionId')
+      .exec();
+  }
+
+  async findAll(filters: any = {}): Promise<ReclamoDocument[]> {
+    return this.reclamoModel
+      .find(filters)
+      .populate('tipoReclamo prioridad criticidad area subarea estadoActual asignadoActual historialIds resumenResolucionId')
       .exec();
   }
 

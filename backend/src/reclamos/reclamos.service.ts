@@ -19,6 +19,10 @@ import { EmpleadosService } from '../empleados/empleados.service';
 import { AsignarEmpleadoDto } from './dto/asignar-empleado.dto/asignar-empleado.dto';
 import { Subarea } from '../subareas/Entidad/subarea.schema';
 import { UpdateReclamoDto } from './dto/update-reclamo.dto/update-reclamo.dto';
+import { CrearResumenResolucionDto } from '../resumen-resolucion/dto/create-resumen-resolucion.dto/create-resumen-resolucion.dto';
+import { CreateReclamoDto } from './dto/create-reclamo.dto/create-reclamo.dto';
+import { Types } from 'mongoose';
+import { getAreaIdFromSubarea } from '../common/helpers/area-subarea';
 
 @Injectable()
 export class ReclamosService {
@@ -36,7 +40,7 @@ export class ReclamosService {
         private readonly empleadosService: EmpleadosService,
     ) {}
 
-    async createReclamo(dto: any, clienteId: string) {
+    async createReclamo(clienteId: string, dto: CreateReclamoDto) {
         const {
             titulo,
             descripcion,
@@ -47,24 +51,23 @@ export class ReclamosService {
             subarea,
             proyectoId,
         } = dto;
-        /*
+
         const proyecto = await this.proyectosService.findById(proyectoId);
         if (!proyecto) {
             throw new NotFoundException('El proyecto no existe.');
         }
-
-        if (proyecto.clienteId !== clienteId) {
+        if (!new Types.ObjectId(clienteId).equals(proyecto.clienteId as any)) {
             throw new BadRequestException('El proyecto no pertenece al cliente.');
         }
-        const tipoReclamoFound = await this.tipoReclamoService.findById(tipoReclamo);
+        const tipoReclamoFound = await this.tipoReclamoService.findOne(tipoReclamo);
         if (!tipoReclamoFound) throw new NotFoundException('Tipo de reclamo inválido.');
 
-        const prioridadFound = await this.prioridadService.findById(prioridad);
+        const prioridadFound = await this.prioridadService.findOne(prioridad);
         if (!prioridadFound) throw new NotFoundException('Prioridad inválida.');
 
-        const criticidadFound = await this.criticidadService.findById(criticidad);
+        const criticidadFound = await this.criticidadService.findOne(criticidad);
         if (!criticidadFound) throw new NotFoundException('Criticidad inválida.');
-        */
+        
         const areaFound = await this.areaService.findById(area);
         if (!areaFound) throw new NotFoundException('Área inválida.');
 
@@ -74,8 +77,9 @@ export class ReclamosService {
             if (!subareaFound) {
                 throw new NotFoundException('Subárea inválida.');
             }
-            // 🔥 Validación obligatoria
-            if (subareaFound.area.toString() !== area.toString()) {
+
+            const subareaAreaId = getAreaIdFromSubarea(subareaFound);
+            if (subareaAreaId !== area.toString()) {
                 throw new BadRequestException('La subárea no pertenece al área indicada.');
             }
         }
@@ -152,9 +156,14 @@ export class ReclamosService {
         const nuevoEstado = await this.estadoReclamoService.findById(nuevoEstadoId);
         if (!nuevoEstado) throw new NotFoundException('Estado inválido.');
 
-        if (reclamo.estadoActual?.nombre === 'Cerrado') {
-            throw new ConflictException('El reclamo ya está cerrado.');
+        const estadoActual = await this.estadoReclamoService.findById(
+        reclamo.estadoActual as any,
+        );
+
+        if (estadoActual.nombre === 'Cerrado') {
+        throw new ConflictException('El reclamo ya está cerrado.');
         }
+
 
         if (empleadoId) {
             const empleado = await this.empleadosService.findById(empleadoId);
@@ -181,8 +190,12 @@ export class ReclamosService {
         const reclamo = await this.reclamosRepository.findById(reclamoId);
         if (!reclamo) throw new NotFoundException('Reclamo no encontrado.');
 
-        if (reclamo.estadoActual?.nombre === 'Cerrado') {
-            throw new ConflictException('No se puede asignar un empleado a un reclamo cerrado.');
+        const estadoActual = await this.estadoReclamoService.findById(
+        reclamo.estadoActual as any,
+        );
+
+        if (estadoActual.nombre === 'Cerrado') {
+        throw new ConflictException('El reclamo ya está cerrado.');
         }
 
         const empleado = await this.empleadosService.findById(empleadoId);
@@ -211,17 +224,18 @@ export class ReclamosService {
         if (!area) throw new NotFoundException('Área inválida.');
         // 2. Validar subárea (si viene)
         let subareaFound: any = null;
-
         if (subareaId) {
             subareaFound = await this.subareaService.findById(subareaId);
             if (!subareaFound) {
-            throw new NotFoundException('Subárea inválida.');
+                throw new NotFoundException('Subárea inválida.');
             }
-            // VALIDACIÓN OBLIGATORIA DEL PROBLEMA 3
-            if (subareaFound.area.toString() !== areaId.toString()) {
-            throw new BadRequestException('La subárea no pertenece al área indicada.');
+
+            const subareaAreaId = getAreaIdFromSubarea(subareaFound);
+            if (subareaAreaId !== areaId.toString()) {
+                throw new BadRequestException('La subárea no pertenece al área indicada.');
             }
         }
+
         // 3. Actualizar área/subárea
         await this.reclamosRepository.cambiarArea(reclamoId, areaId, subareaId ?? null);
         // 4. Registrar historial
@@ -236,49 +250,54 @@ export class ReclamosService {
         return this.reclamosRepository.findById(reclamoId);
     }
 
-
     //CERRAR RECLAMO
-    async cerrarReclamo(reclamoId: string, dto: any) {
-    const { descripcion, responsableId, adjuntoId } = dto;
+    async cerrarReclamo(reclamoId: string, dto: CrearResumenResolucionDto) {
+    const { descripcion, responsableId } = dto;
 
     const reclamo = await this.reclamosRepository.findById(reclamoId);
     if (!reclamo) throw new NotFoundException('Reclamo no encontrado.');
 
-    if (reclamo.estadoActual?.nombre === 'Cerrado') {
+    //Traer el estado actual a partir del ID
+    const estadoActual = await this.estadoReclamoService.findById(
+        reclamo.estadoActual as any,
+    );
+
+    if (estadoActual.nombre === 'Cerrado') {
         throw new ConflictException('El reclamo ya está cerrado.');
     }
 
-    if (!descripcion || descripcion.length < 20) {
+    if (!descripcion || descripcion.trim().length < 20) {
         throw new BadRequestException(
         'El resumen debe contener al menos 20 caracteres.',
         );
     }
 
-    const estadoCerrado =
-        await this.estadoReclamoService.findByNombre('Cerrado');
-
+    // Buscar el estado "Cerrado"
+    const estadoCerrado = await this.estadoReclamoService.findByNombre('Cerrado');
     if (!estadoCerrado) {
         throw new NotFoundException(
         'Debe existir el estado "Cerrado" en el sistema.',
         );
     }
 
-    // 1. Crear resumen correctamente usando el service REAL
+    // (opcional pero prolijo) validar que el responsable exista
+    const empleado = await this.empleadosService.findById(responsableId);
+    if (!empleado) {
+        throw new NotFoundException('Empleado responsable no encontrado.');
+    }
+
+    // 1) Cambiar el estado del reclamo a "Cerrado"
+    await this.reclamosRepository.update(reclamoId, {
+        estadoActual: estadoCerrado._id,
+    });
+
+    // 2) Crear el resumen de resolución (sin validar estado ahí)
     const resumen = await this.resumenResolucionService.crearResumen(
-        {
-        descripcion,
-        responsableId,
-        },
+        { descripcion, responsableId },
         reclamoId,
     );
 
-    // 2. Actualizar reclamo con estado y resumen
-    await this.reclamosRepository.update(reclamoId, {
-        estadoActual: estadoCerrado._id,
-        resumenResolucionId: resumen._id,
-    });
-
-    // 3. Registrar historial del cierre
+    // 3) Registrar historial del cierre
     await this.historialReclamoService.createAndAttach(reclamoId, {
         detalleAccion: 'Reclamo cerrado con resumen de resolución.',
         empleado: responsableId,
@@ -287,7 +306,9 @@ export class ReclamosService {
         subarea: reclamo.subarea,
     });
 
+    // 4) Devolver el reclamo actualizado
     return this.reclamosRepository.findById(reclamoId);
     }
+
 
 }

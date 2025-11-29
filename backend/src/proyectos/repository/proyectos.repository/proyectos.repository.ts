@@ -29,16 +29,10 @@ export class ProyectosRepository {
     }
     return this.proyectoModel.find(filter).populate('tipoProyecto').exec();
   }
-  async findById(id: string, clienteId?: string): Promise<Proyecto> {
-    const proyecto = await this.proyectoModel.findById(id).exec(); 
-    if (!proyecto) {
-      throw new NotFoundException(`Proyecto con ID ${id} no encontrado`);
-    }
-    if (clienteId && proyecto.clienteId !== clienteId) {
-      throw new ForbiddenException('No tienes permiso para ver este proyecto');
-    }
-    return proyecto;
+  async findById(id: string): Promise<Proyecto | null> {
+    return this.proyectoModel.findById(id).populate('tipoProyecto').exec();
   }
+
 
   async findByCliente(clienteId: string): Promise<Proyecto[]> {
     return this.proyectoModel.find({ clienteId }).populate('tipoProyecto').exec();

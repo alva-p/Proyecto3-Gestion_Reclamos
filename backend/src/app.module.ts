@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+// app.module.ts
+import { Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -22,6 +23,13 @@ import { EstadoReclamoModule } from './estado-reclamo/estado-reclamo.module';
 import { EstadoSolicitudModule } from './estado-solicitud/estado-solicitud.module';
 import { ResumenResolucionModule } from './resumen-resolucion/resumen-resolucion.module';
 import { HealthController } from './health/health.controller';
+import { EstadoReclamoService } from './estado-reclamo/estado-reclamo.service'; // Asegúrate de tener esta importación
+
+import { RolesService } from './roles/roles.service';
+import { EstadoSolicitudService } from './estado-solicitud/estado-solicitud.service';
+import { UsuariosService } from './usuarios/usuarios.service';
+import { seedInitialData } from './seed/seed-initial-data';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -45,7 +53,24 @@ import { HealthController } from './health/health.controller';
     EstadoSolicitudModule,
     ResumenResolucionModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, HealthController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements OnModuleInit {
+  // Nest te inyecta los servicios aquí
+  constructor(
+    private readonly rolesService: RolesService,
+    private readonly estadoSolicitudService: EstadoSolicitudService,
+    private readonly usuariosService: UsuariosService,
+    private readonly estadoReclamoService: EstadoReclamoService,
+  ) {}
+
+  async onModuleInit() {
+    await seedInitialData(
+      this.rolesService,
+      this.estadoSolicitudService,
+      this.usuariosService,
+      this.estadoReclamoService,
+    );
+  }
+}

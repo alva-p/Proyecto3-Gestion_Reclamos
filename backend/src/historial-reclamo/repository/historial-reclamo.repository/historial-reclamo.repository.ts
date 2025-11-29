@@ -26,7 +26,7 @@ export class HistorialReclamoRepository {
   async findByReclamo(reclamoId: string): Promise<HistorialReclamoDocument[]> {
     return this.historialModel
       .find({ reclamoId: new Types.ObjectId(reclamoId) })
-      .populate('estadoreclamo area subarea empleado')
+      .populate('estadoReclamo area subarea empleado')
       .sort({ fechaHora: 1 })
       .exec();
   }
