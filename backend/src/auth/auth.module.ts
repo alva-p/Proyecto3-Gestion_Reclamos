@@ -16,7 +16,9 @@ import { EstadoSolicitudModule } from '../estado-solicitud/estado-solicitud.modu
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'defaultSecretKey',
       signOptions: {
-        expiresIn: process.env.JWT_EXPIRATION || '24h',
+        // El tipo de expiresIn en las versiones recientes de @nestjs/jwt es más estricto,
+        // por lo que casteamos explícitamente el valor de entorno o el default.
+        expiresIn: (process.env.JWT_EXPIRATION || '24h') as any,
       },
     }),
     UsuariosModule,

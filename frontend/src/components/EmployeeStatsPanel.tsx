@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Bar, Pie } from 'react-chartjs-2';
-import Chart from 'chart.js/auto';
+// src/components/EmployeeStatsPanel.tsx
+import React from 'react';
 
 interface EstadoData {
   _id: string;
@@ -8,7 +7,7 @@ interface EstadoData {
 }
 
 interface MesData {
-  _id: string;
+  _id: string;   // esperado "YYYY-MM"
   cantidad: number;
 }
 
@@ -19,83 +18,112 @@ interface Stats {
 }
 
 interface Props {
-  empleadoId: string;
+  stats: Stats;
+  fechaInicio: string;
+  fechaFin: string;
+  setFechaInicio: (v: string) => void;
+  setFechaFin: (v: string) => void;
 }
 
 const meses = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
 ];
 
-export const EmployeeStatsPanel: React.FC<Props> = ({ empleadoId }) => {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [fechaInicio, setFechaInicio] = useState<string>('');
-  const [fechaFin, setFechaFin] = useState<string>('');
+export const EmployeeStatsPanel: React.FC<Props> = ({
+  stats,
+  fechaInicio,
+  fechaFin,
+  setFechaInicio,
+  setFechaFin,
+}) => {
+  const total = stats?.total ?? 0;
+  const porEstado = stats?.porEstado ?? [];
+  const porMes = stats?.porMes ?? [];
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    const fetchStats = async () => {
-      setLoading(true);
-      let url = `/backend/reclamos/estadisticas-empleado?empleadoId=${empleadoId}`;
-      if (fechaInicio) url += `&fechaInicio=${fechaInicio}`;
-      if (fechaFin) url += `&fechaFin=${fechaFin}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      setStats(data);
-      setLoading(false);
-    };
-    fetchStats();
-    interval = setInterval(fetchStats, 10000);
-    return () => clearInterval(interval);
-  }, [empleadoId, fechaInicio, fechaFin]);
-
-  if (loading || !stats) return <div>Cargando estadísticas...</div>;
-
-  // Bar Chart para reclamos por mes
-  const barData = {
-    labels: stats.porMes.map(m => {
-      const [year, month] = m._id.split('-');
-      return `${meses[parseInt(month, 10) - 1]} ${year}`;
-    }),
-    datasets: [{
-      label: 'Reclamos por mes',
-      data: stats.porMes.map(m => m.cantidad),
-      backgroundColor: 'rgba(54, 162, 235, 0.6)',
-    }],
-  };
-
-  // Pie Chart para reclamos por estado
-  const pieData = {
-    labels: stats.porEstado.map(e => e._id),
-    datasets: [{
-      data: stats.porEstado.map(e => e.cantidad),
-      backgroundColor: [
-        '#36A2EB', '#FF6384', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
-      ],
-    }],
+  const formatMes = (id: string) => {
+    // id esperado: "YYYY-MM"
+    const [year, month] = id.split('-');
+    const idx = parseInt(month, 10) - 1;
+    const nombreMes = meses[idx] ?? id;
+    return `${nombreMes} ${year}`;
   };
 
   return (
-    <div>
-      <h2>Panel de Estadísticas</h2>
-      <p>Total de reclamos: <b>{stats.total}</b></p>
+    <div style={{ marginTop: '2rem' }}>
+      <h2>Panel de Estadísticas del Empleado</h2>
+      <p>
+        Total de reclamos asignados: <b>{total}</b>
+      </p>
+
+      {/* Filtros de fecha (reutilizando los del dashboard) */}
       <div style={{ marginBottom: 16, display: 'flex', gap: '1rem' }}>
         <label>
           Desde:
-          <input type="date" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} />
+          <input
+            type="date"
+            value={fechaInicio}
+            onChange={e => setFechaInicio(e.target.value)}
+          />
         </label>
         <label>
           Hasta:
-          <input type="date" value={fechaFin} onChange={e => setFechaFin(e.target.value)} />
+          <input
+            type="date"
+            value={fechaFin}
+            onChange={e => setFechaFin(e.target.value)}
+          />
         </label>
       </div>
-      <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-        <div style={{ width: 400 }}>
-          <Bar data={barData} />
+
+      <div
+        style={{
+          display: 'flex',
+          gap: '2rem',
+          flexWrap: 'wrap',
+          marginTop: 16,
+        }}
+      >
+        {/* Resumen por estado */}
+        <div style={{ minWidth: 280 }}>
+          <h3>Detalle por estado</h3>
+          {porEstado.length === 0 ? (
+            <p style={{ color: '#666' }}>No hay reclamos para este empleado.</p>
+          ) : (
+            <ul>
+              {porEstado.map(e => (
+                <li key={String(e._id)}>
+                  <b>{String(e._id)}:</b> {e.cantidad}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-        <div style={{ width: 400 }}>
-          <Pie data={pieData} />
+
+        {/* Resumen por mes */}
+        <div style={{ minWidth: 280 }}>
+          <h3>Detalle por mes</h3>
+          {porMes.length === 0 ? (
+            <p style={{ color: '#666' }}>No hay reclamos en el rango de fechas seleccionado.</p>
+          ) : (
+            <ul>
+              {porMes.map(m => (
+                <li key={m._id}>
+                  <b>{formatMes(m._id)}:</b> {m.cantidad}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>

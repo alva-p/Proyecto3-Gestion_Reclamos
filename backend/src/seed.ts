@@ -2,12 +2,16 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { RolesService } from './roles/roles.service';
 import { EstadoSolicitudService } from './estado-solicitud/estado-solicitud.service';
+import * as bcrypt from 'bcrypt';
+import { UsuariosService } from './usuarios/usuarios.service';
 
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule);
 
   const rolesService = app.get(RolesService);
   const estadoSolicitudService = app.get(EstadoSolicitudService);
+
+  const usuariosService = app.get(UsuariosService);
 
   console.log('🌱 Iniciando seed de datos...');
 
@@ -105,6 +109,39 @@ async function bootstrap() {
   } catch (error) {
     console.error('❌ Error creando estado RECHAZADO:', error.message);
   }
+
+  // Crear usuario ADMIN
+  // Crear usuario ADMIN
+  try {
+    const adminEmail = 'admin@sistema.com';
+    const existingAdmin = await usuariosService.findByEmail(adminEmail);
+
+    if (!existingAdmin) {
+      // Volvemos a buscar el rol ADMIN
+      const adminRol = await rolesService.findByName('ADMIN');
+
+      if (!adminRol) {
+        throw new Error('Rol ADMIN no encontrado. Verifica que el seed de roles se ejecutó correctamente.');
+      }
+
+      const hashedPassword = await bcrypt.hash('Admin123!', 10);
+
+      await usuariosService.create({
+        nombre: 'Admin Principal',
+        correo: adminEmail,
+        contraseña: hashedPassword,
+        rol: (adminRol._id as any).toString(),
+        activo: true,
+      });
+
+      console.log('✅ Usuario ADMIN creado (admin@sistema.com / Admin123!)');
+    } else {
+      console.log('ℹ️  Usuario ADMIN ya existe');
+    }
+  } catch (error: any) {
+    console.error('❌ Error creando usuario ADMIN:', error.message);
+  }
+
 
   console.log('🎉 Seed completado exitosamente');
   await app.close();

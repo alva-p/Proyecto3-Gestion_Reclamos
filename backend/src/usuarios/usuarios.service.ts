@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { UsuariosRepository } from './repository/usuarios.repository';
 import { Usuario } from './Entidad/usuario.schema';
 
@@ -7,8 +7,12 @@ export class UsuariosService {
   constructor(private readonly usuariosRepository: UsuariosRepository) {}
 
   async create(data: Partial<Usuario>): Promise<Usuario> {
+    const { correo } = data;
+    if (!correo) {
+      throw new BadRequestException('El correo es obligatorio');
+    }
     // Verificar si el correo ya existe
-    const existingUser = await this.usuariosRepository.findByEmail(data.correo);
+    const existingUser = await this.usuariosRepository.findByEmail(correo);
     if (existingUser) {
       throw new ConflictException('El correo ya está registrado');
     }
@@ -39,7 +43,7 @@ export class UsuariosService {
     // Si se está actualizando el correo, verificar que no exista
     if (data.correo) {
       const existingUser = await this.usuariosRepository.findByEmail(data.correo);
-      if (existingUser && existingUser._id.toString() !== id) {
+      if (existingUser && (existingUser._id as any).toString() !== id) {
         throw new ConflictException('El correo ya está registrado');
       }
     }
