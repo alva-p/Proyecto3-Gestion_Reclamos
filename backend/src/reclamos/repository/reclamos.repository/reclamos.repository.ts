@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { Reclamo, ReclamoDocument } from '../../Entidad/reclamo.schema';
 
 @Injectable()
@@ -10,16 +10,13 @@ export class ReclamosRepository {
     private readonly reclamoModel: Model<ReclamoDocument>,
   ) {}
 
+  // Crear reclamo
   async create(data: any): Promise<ReclamoDocument> {
     return this.reclamoModel.create(data);
   }
 
+  // Buscar por ID (sin new ObjectId para evitar el BSONError)
   async findById(id: string): Promise<ReclamoDocument | null> {
-    // Si el id no tiene formato de ObjectId válido, devolvemos null
-    if (!Types.ObjectId.isValid(id)) {
-      return null;
-    }
-
     return this.reclamoModel
       .findById(id)
       .populate(
