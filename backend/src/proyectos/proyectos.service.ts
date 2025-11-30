@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { ProyectosRepository } from './repository/proyectos.repository/proyectos.repository';
 import { CreateProyectoDto } from './dto/create-proyecto.dto/create-proyecto.dto';
 import { UpdateProyectoDto } from './dto/update-proyecto.dto/update-proyecto.dto';
@@ -30,7 +30,17 @@ export class ProyectosService {
       await this.tipoProyectoService.findOne(createProyectoDto.tipoProyecto);
     }
 
-    // 4) Crear el proyecto si todo es válido
+    // 4) Validar duplicados: mismo nombre y clienteId
+    const proyectosExistente = await this.proyectosRepository.findAll(
+      createProyectoDto.clienteId,
+      undefined,
+      createProyectoDto.nombre
+    );
+    if (proyectosExistente.length > 0) {
+      throw new ConflictException('Ya existe un proyecto con ese nombre para este cliente');
+    }
+
+    // 5) Crear el proyecto si todo es válido
     return this.proyectosRepository.create(createProyectoDto);
   }
 
