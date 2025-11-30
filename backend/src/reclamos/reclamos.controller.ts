@@ -15,7 +15,6 @@ import { CreateReclamoDto } from './dto/create-reclamo.dto/create-reclamo.dto';
 import { UpdateReclamoDto } from './dto/update-reclamo.dto/update-reclamo.dto';
 import { CambiarEstadoReclamoDto } from '../estado-reclamo/dto/cambiar-estado-reclamo-dto/cambiar-estado-reclamo-dto';
 import { AsignarEmpleadoDto } from './dto/asignar-empleado.dto/asignar-empleado.dto';
-import { CambiarAreaDto } from './dto/cambio-area.dto/cambio-area.dto';
 import { CrearResumenResolucionDto } from '../resumen-resolucion/dto/create-resumen-resolucion.dto/create-resumen-resolucion.dto';
 
 import { sanitizeReclamoForClient } from '../common/helpers/reclamo-serializer';
@@ -116,16 +115,6 @@ export class ReclamosController {
     @Body() dto: AsignarEmpleadoDto,
   ) {
     return this.reclamosService.asignarEmpleado(reclamoId, dto);
-  }
-
-  // 7 - Cambiar área
-  @Patch(':id/area')
-  // opcional: @Roles('ADMIN')
-  cambiarArea(
-    @Param('id') reclamoId: string,
-    @Body() dto: CambiarAreaDto,
-  ) {
-    return this.reclamosService.cambiarArea(reclamoId, dto);
   }
 
   // 8 - Cerrar reclamo

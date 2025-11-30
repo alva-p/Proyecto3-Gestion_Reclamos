@@ -27,13 +27,5 @@ export class CreateReclamoDto {
 
   @IsMongoId()
   @IsNotEmpty()
-  area: string;
-
-  @IsMongoId()
-  @IsOptional()
-  subarea?: string;
-
-  @IsMongoId()
-  @IsNotEmpty()
   proyectoId: string;
 }

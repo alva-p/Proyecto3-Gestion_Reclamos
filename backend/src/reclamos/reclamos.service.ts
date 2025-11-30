@@ -40,6 +40,7 @@ export class ReclamosService {
         private readonly empleadosService: EmpleadosService,
     ) {}
 
+    //CREAR RECLAMO
     async createReclamo(clienteId: string, dto: CreateReclamoDto) {
         const {
             titulo,
@@ -47,8 +48,6 @@ export class ReclamosService {
             tipoReclamo,
             prioridad,
             criticidad,
-            area,
-            subarea,
             proyectoId,
         } = dto;
 
@@ -59,6 +58,7 @@ export class ReclamosService {
         if (!new Types.ObjectId(clienteId).equals(proyecto.clienteId as any)) {
             throw new BadRequestException('El proyecto no pertenece al cliente.');
         }
+
         const tipoReclamoFound = await this.tipoReclamoService.findOne(tipoReclamo);
         if (!tipoReclamoFound) throw new NotFoundException('Tipo de reclamo inválido.');
 
@@ -67,23 +67,6 @@ export class ReclamosService {
 
         const criticidadFound = await this.criticidadService.findOne(criticidad);
         if (!criticidadFound) throw new NotFoundException('Criticidad inválida.');
-        
-        const areaFound = await this.areaService.findById(area);
-        if (!areaFound) throw new NotFoundException('Área inválida.');
-
-        let subareaFound: Subarea | null = null;
-        if (subarea) {
-            subareaFound = await this.subareaService.findById(subarea);
-            if (!subareaFound) {
-                throw new NotFoundException('Subárea inválida.');
-            }
-
-            const subareaAreaId = getAreaIdFromSubarea(subareaFound);
-            if (subareaAreaId !== area.toString()) {
-                throw new BadRequestException('La subárea no pertenece al área indicada.');
-            }
-        }
-
 
         const estadoInicial = await this.estadoReclamoService.findByNombre('Enviado');
         if (!estadoInicial) {
@@ -96,8 +79,9 @@ export class ReclamosService {
             tipoReclamo,
             prioridad,
             criticidad,
-            area,
-            subarea: subarea ?? null,
+            // 👉 todavía sin área ni subárea
+            area: null,
+            subarea: null,
             estadoActual: estadoInicial._id,
             asignadoActual: null,
             historialIds: [],
@@ -110,14 +94,19 @@ export class ReclamosService {
             fechaHora: new Date(),
             detalleAccion: 'Reclamo creado.',
             estadoReclamo: estadoInicial._id,
-            area,
-            subarea: subarea ?? null,
+            area: null,
+            subarea: null,
             empleado: null,
             reclamoId: reclamo._id,
         });
-        await this.reclamosRepository.pushHistorial(reclamo._id as string, historial._id as string);
+
+        await this.reclamosRepository.pushHistorial(
+            reclamo._id as string,
+            historial._id as string,
+        );
         return this.reclamosRepository.findById(reclamo._id as string);
     }
+
     //LISTAR CON FILTROS
     async findAll(filters: any) {
         const query: any = {};
@@ -144,7 +133,6 @@ export class ReclamosService {
         }
         return reclamo;
     }
-
 
     //CAMBIAR ESTADO
     async cambiarEstado(reclamoId: string, dto: CambiarEstadoReclamoDto) {
@@ -191,60 +179,40 @@ export class ReclamosService {
         if (!reclamo) throw new NotFoundException('Reclamo no encontrado.');
 
         const estadoActual = await this.estadoReclamoService.findById(
-        reclamo.estadoActual as any,
+            reclamo.estadoActual as any,
         );
-
         if (estadoActual.nombre === 'Cerrado') {
-        throw new ConflictException('El reclamo ya está cerrado.');
+            throw new ConflictException('El reclamo ya está cerrado.');
         }
 
+        // Traemos el empleado con su subárea
         const empleado = await this.empleadosService.findById(empleadoId);
         if (!empleado) throw new NotFoundException('Empleado no encontrado.');
 
-        await this.reclamosRepository.asignarEmpleado(reclamoId, empleadoId);
-
-        await this.historialReclamoService.createAndAttach(reclamoId, {
-            detalleAccion: 'Asignación de empleado responsable.',
-            empleado: empleadoId,
-            estadoReclamo: reclamo.estadoActual,
-            area: reclamo.area,
-            subarea: reclamo.subarea,
-        });
-
-        return this.reclamosRepository.findById(reclamoId);
-    }
-    //CAMBIAR ÁREA
-    async cambiarArea(reclamoId: string, dto: any) {
-        const { areaId, subareaId, empleadoId } = dto;
-        const reclamo = await this.reclamosRepository.findById(reclamoId);
-        if (!reclamo) throw new NotFoundException('Reclamo no encontrado.');
-
-        // 1. Validar área nueva
-        const area = await this.areaService.findById(areaId);
-        if (!area) throw new NotFoundException('Área inválida.');
-        // 2. Validar subárea (si viene)
-        let subareaFound: any = null;
-        if (subareaId) {
-            subareaFound = await this.subareaService.findById(subareaId);
-            if (!subareaFound) {
-                throw new NotFoundException('Subárea inválida.');
-            }
-
-            const subareaAreaId = getAreaIdFromSubarea(subareaFound);
-            if (subareaAreaId !== areaId.toString()) {
-                throw new BadRequestException('La subárea no pertenece al área indicada.');
-            }
+        if (!empleado.subarea) {
+            throw new BadRequestException(
+            'El empleado no tiene subárea asignada. No se puede asignar al reclamo.',
+            );
         }
 
-        // 3. Actualizar área/subárea
-        await this.reclamosRepository.cambiarArea(reclamoId, areaId, subareaId ?? null);
-        // 4. Registrar historial
-        await this.historialReclamoService.createAndAttach(reclamoId, {
-            detalleAccion: 'Cambio de área/subárea.',
-            empleado: empleadoId ?? null,
+        // empleado.subarea viene populado
+        const subareaDoc = empleado.subarea as any; // Subarea
+        const areaId = getAreaIdFromSubarea(subareaDoc); // helper que ya tenés
+
+        // Actualizamos reclamo: responsable + área + subárea
+        await this.reclamosRepository.update(reclamoId, {
+            asignadoActual: empleado._id,
+            subarea: subareaDoc._id ?? subareaDoc,
             area: areaId,
-            subarea: subareaId ?? null,
+        });
+
+        // Historial coherente con lo anterior
+        await this.historialReclamoService.createAndAttach(reclamoId, {
+            detalleAccion: 'Asignación de empleado responsable.',
+            empleado: empleado._id,
             estadoReclamo: reclamo.estadoActual,
+            area: areaId,
+            subarea: subareaDoc._id ?? subareaDoc,
         });
 
         return this.reclamosRepository.findById(reclamoId);
@@ -252,62 +220,61 @@ export class ReclamosService {
 
     //CERRAR RECLAMO
     async cerrarReclamo(reclamoId: string, dto: CrearResumenResolucionDto) {
-    const { descripcion, responsableId } = dto;
+        const { descripcion, responsableId } = dto;
+        const reclamo = await this.reclamosRepository.findById(reclamoId);
+        if (!reclamo) throw new NotFoundException('Reclamo no encontrado.');
 
-    const reclamo = await this.reclamosRepository.findById(reclamoId);
-    if (!reclamo) throw new NotFoundException('Reclamo no encontrado.');
-
-    //Traer el estado actual a partir del ID
-    const estadoActual = await this.estadoReclamoService.findById(
-        reclamo.estadoActual as any,
-    );
-
-    if (estadoActual.nombre === 'Cerrado') {
-        throw new ConflictException('El reclamo ya está cerrado.');
-    }
-
-    if (!descripcion || descripcion.trim().length < 20) {
-        throw new BadRequestException(
-        'El resumen debe contener al menos 20 caracteres.',
+        //Traer el estado actual a partir del ID
+        const estadoActual = await this.estadoReclamoService.findById(
+            reclamo.estadoActual as any,
         );
-    }
 
-    // Buscar el estado "Cerrado"
-    const estadoCerrado = await this.estadoReclamoService.findByNombre('Cerrado');
-    if (!estadoCerrado) {
-        throw new NotFoundException(
-        'Debe existir el estado "Cerrado" en el sistema.',
+        if (estadoActual.nombre === 'Cerrado') {
+            throw new ConflictException('El reclamo ya está cerrado.');
+        }
+
+        if (!descripcion || descripcion.trim().length < 20) {
+            throw new BadRequestException(
+            'El resumen debe contener al menos 20 caracteres.',
+            );
+        }
+
+        // Buscar el estado "Cerrado"
+        const estadoCerrado = await this.estadoReclamoService.findByNombre('Cerrado');
+        if (!estadoCerrado) {
+            throw new NotFoundException(
+            'Debe existir el estado "Cerrado" en el sistema.',
+            );
+        }
+
+        // (opcional pero prolijo) validar que el responsable exista
+        const empleado = await this.empleadosService.findById(responsableId);
+        if (!empleado) {
+            throw new NotFoundException('Empleado responsable no encontrado.');
+        }
+
+        // 1) Cambiar el estado del reclamo a "Cerrado"
+        await this.reclamosRepository.update(reclamoId, {
+            estadoActual: estadoCerrado._id,
+        });
+
+        // 2) Crear el resumen de resolución (sin validar estado ahí)
+        const resumen = await this.resumenResolucionService.crearResumen(
+            { descripcion, responsableId },
+            reclamoId,
         );
-    }
 
-    // (opcional pero prolijo) validar que el responsable exista
-    const empleado = await this.empleadosService.findById(responsableId);
-    if (!empleado) {
-        throw new NotFoundException('Empleado responsable no encontrado.');
-    }
+        // 3) Registrar historial del cierre
+        await this.historialReclamoService.createAndAttach(reclamoId, {
+            detalleAccion: 'Reclamo cerrado con resumen de resolución.',
+            empleado: responsableId,
+            estadoReclamo: estadoCerrado._id,
+            area: reclamo.area,
+            subarea: reclamo.subarea,
+        });
 
-    // 1) Cambiar el estado del reclamo a "Cerrado"
-    await this.reclamosRepository.update(reclamoId, {
-        estadoActual: estadoCerrado._id,
-    });
-
-    // 2) Crear el resumen de resolución (sin validar estado ahí)
-    const resumen = await this.resumenResolucionService.crearResumen(
-        { descripcion, responsableId },
-        reclamoId,
-    );
-
-    // 3) Registrar historial del cierre
-    await this.historialReclamoService.createAndAttach(reclamoId, {
-        detalleAccion: 'Reclamo cerrado con resumen de resolución.',
-        empleado: responsableId,
-        estadoReclamo: estadoCerrado._id,
-        area: reclamo.area,
-        subarea: reclamo.subarea,
-    });
-
-    // 4) Devolver el reclamo actualizado
-    return this.reclamosRepository.findById(reclamoId);
+        // 4) Devolver el reclamo actualizado
+        return this.reclamosRepository.findById(reclamoId);
     }
 
 

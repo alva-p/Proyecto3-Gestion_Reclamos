@@ -9,16 +9,13 @@ export class EmpleadosService {
   constructor(private readonly empleadosRepository: EmpleadosRepository) {}
 
   async create(data: CreateEmpleadoDto): Promise<Empleado> {
-    // 1. Crear el objeto que cumple con Partial<Empleado>
     const empleadoData: Partial<Empleado> = {
       puesto: data.puesto,
-      usuarioId: new Types.ObjectId(data.usuarioId), // Conversión requerida
+      usuarioId: new Types.ObjectId(data.usuarioId), 
     };
-    // 2. Si subarea existe, convertirla también
     if (data.subarea) {
-      empleadoData.subarea = new Types.ObjectId(data.subarea); // Conversión requerida
+      empleadoData.subarea = new Types.ObjectId(data.subarea); 
     }
-    // 3. Pasar el objeto transformado al repositorio
     return this.empleadosRepository.create(empleadoData);
   }
 
