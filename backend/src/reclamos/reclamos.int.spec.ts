@@ -64,7 +64,6 @@ describe('ReclamosService - Integración', () => {
 
     connection = app.get<Connection>(getConnectionToken());
 
-    // Servicios reales
     reclamosService = app.get(ReclamosService);
     tipoReclamoService = app.get(TipoReclamoService);
     prioridadService = app.get(PrioridadService);
@@ -76,12 +75,8 @@ describe('ReclamosService - Integración', () => {
     estadoReclamoService = app.get(EstadoReclamoService);
     authService = app.get(AuthService);
 
-    // ====== SUFIJO ÚNICO PARA EVITAR CONFLICTOS ENTRE CORRIDAS ======
     const suffix = Date.now();
 
-    // ================== SETUP DE DATOS BASE ==================
-
-    // 1) Área y Subárea (nombres únicos por corrida)
     const area = await areasService.create({
       nombre: `Soporte Técnico INT-${suffix}`,
       descripcion: 'Área encargada del soporte técnico (tests integración)',
@@ -152,9 +147,7 @@ describe('ReclamosService - Integración', () => {
     await app.close();
   });
 
-  // ===========================================================================
-  // 1) createReclamo (OK y proyecto inexistente)
-  // ===========================================================================
+  // 1) createReclamo
   describe('createReclamo (integración)', () => {
     it('debe crear un reclamo correctamente con historial inicial', async () => {
       const dto: CreateReclamoDto = {
@@ -210,9 +203,7 @@ describe('ReclamosService - Integración', () => {
     });
   });
 
-  // ===========================================================================
-  // 2) asignarEmpleado (caso feliz)
-  // ===========================================================================
+  // 2) asignarEmpleado
   describe('asignarEmpleado (integración)', () => {
     it('debe asignar el reclamo a un empleado válido y setear área/subárea', async () => {
       // Crear reclamo base
@@ -264,9 +255,7 @@ describe('ReclamosService - Integración', () => {
     });
   });
 
-  // ===========================================================================
-  // 3) cerrarReclamo (OK y resumen demasiado corto)
-  // ===========================================================================
+  // 3) cerrarReclamo 
   describe('cerrarReclamo (integración)', () => {
     it('debe cerrar un reclamo correctamente con resumen de resolución', async () => {
       // Crear reclamo
@@ -337,9 +326,7 @@ describe('ReclamosService - Integración', () => {
     });
   });
 
-  // ===========================================================================
   // 4) cambiarEstado (OK y no permite si está cerrado)
-  // ===========================================================================
   describe('cambiarEstado (integración)', () => {
     it('debe cambiar el estado del reclamo y registrar historial', async () => {
       const dtoReclamo: CreateReclamoDto = {
