@@ -1,107 +1,108 @@
-import React, { useMemo, useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { mockClaims, mockUsers } from '../data/mockData';
-import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import {
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 import { FileText, Users, TrendingUp, Clock } from 'lucide-react';
 import { statusLabels, typeLabels } from '../utils/translations';
-import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 export const AdminDashboard: React.FC = () => {
-  const [dateRange, setDateRange] = useState('all');
+  const [fechaInicio, setFechaInicio] = React.useState('');
+  const [fechaFin, setFechaFin] = React.useState('');
+  const [stats, setStats] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
-  const filteredClaims = useMemo(() => {
-    if (dateRange === 'all') return mockClaims;
-    
-    const now = new Date();
-    const cutoffDate = new Date();
-    
-    switch (dateRange) {
-      case '7days':
-        cutoffDate.setDate(now.getDate() - 7);
-        break;
-      case '30days':
-        cutoffDate.setDate(now.getDate() - 30);
-        break;
-      case '90days':
-        cutoffDate.setDate(now.getDate() - 90);
-        break;
-      default:
-        return mockClaims;
-    }
-    
-    return mockClaims.filter(claim => claim.createdAt >= cutoffDate);
-  }, [dateRange]);
+  React.useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  const stats = useMemo(() => {
-    const totalClaims = filteredClaims.length;
-    const totalClients = mockUsers.filter(u => u.role === 'cliente').length;
-    const openClaims = filteredClaims.filter(c => 
-      !['cerrado', 'cancelado'].includes(c.status)
-    ).length;
+        const params: string[] = [];
+        if (fechaInicio) params.push(`fechaInicio=${fechaInicio}`);
+        if (fechaFin) params.push(`fechaFin=${fechaFin}`);
+        const query = params.length ? `?${params.join('&')}` : '';
 
-    // Calcular tiempo promedio de resolución (días)
-    const closedClaims = filteredClaims.filter(c => c.status === 'cerrado');
-    const avgResolutionTime = closedClaims.length > 0
-      ? closedClaims.reduce((acc, claim) => {
-          const diff = claim.updatedAt.getTime() - claim.createdAt.getTime();
-          return acc + diff / (1000 * 60 * 60 * 24);
-        }, 0) / closedClaims.length
-      : 0;
+        const url = `/backend/reclamos/estadisticas-admin${query}`;
+        console.log('Llamando a estadísticas admin:', url);
 
-    return { totalClaims, totalClients, openClaims, avgResolutionTime };
-  }, [filteredClaims]);
+        const res = await fetch(url, {
+          method: 'GET',
+          credentials: 'include',
+        });
 
-  const claimsByStatus = useMemo(() => {
-    const statusCount: Record<string, number> = {};
-    filteredClaims.forEach(claim => {
-      statusCount[claim.status] = (statusCount[claim.status] || 0) + 1;
-    });
+        const raw = await res.text();
+        console.log('Respuesta cruda estadísticas admin:', raw);
 
-    return Object.entries(statusCount).map(([status, count]) => ({
-      name: statusLabels[status],
-      value: count,
-    }));
-  }, [filteredClaims]);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${raw}`);
+        }
 
-  const claimsByType = useMemo(() => {
-    const typeCount: Record<string, number> = {};
-    filteredClaims.forEach(claim => {
-      typeCount[claim.type] = (typeCount[claim.type] || 0) + 1;
-    });
+        const data = JSON.parse(raw);
+        console.log('Datos parseados estadísticas admin:', data);
+        setStats(data);
+      } catch (err) {
+        console.error('Error al cargar estadísticas admin:', err);
+        setError('No se pudieron cargar las estadísticas de administrador.');
+        setStats(null);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    return Object.entries(typeCount).map(([type, count]) => ({
-      name: typeLabels[type],
-      value: count,
-    }));
-  }, [filteredClaims]);
+    fetchStats();
+  }, [fechaInicio, fechaFin]);
 
-  const claimsByArea = useMemo(() => {
-    const areaCount: Record<string, number> = {};
-    filteredClaims.forEach(claim => {
-      const area = claim.assignedArea || 'Sin asignar';
-      areaCount[area] = (areaCount[area] || 0) + 1;
-    });
+  const COLORS = [
+    '#3b82f6',
+    '#f59e0b',
+    '#8b5cf6',
+    '#ef4444',
+    '#10b981',
+    '#6b7280',
+    '#ec4899',
+  ];
 
-    return Object.entries(areaCount).map(([area, count]) => ({
-      area,
-      reclamos: count,
-    }));
-  }, [filteredClaims]);
+  if (loading && !stats) return <div>Cargando estadísticas...</div>;
+  if (error) return <div>{error}</div>;
+  if (!stats) return <div>No hay estadísticas disponibles.</div>;
 
-  const claimsByMonth = useMemo(() => {
-    const monthCount: Record<string, number> = {};
-    filteredClaims.forEach(claim => {
-      const month = claim.createdAt.toLocaleDateString('es-AR', { month: 'short', year: 'numeric' });
-      monthCount[month] = (monthCount[month] || 0) + 1;
-    });
+  const claimsByStatus =
+    stats.porEstado?.map((e: any) => ({
+      name: statusLabels[e._id] || e._id,
+      value: e.cantidad,
+    })) || [];
 
-    return Object.entries(monthCount)
-      .map(([month, count]) => ({ month, reclamos: count }))
-      .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
-  }, [filteredClaims]);
+  const claimsByType =
+    stats.porTipo?.map((t: any) => ({
+      name: typeLabels[t._id] || t._id,
+      value: t.cantidad,
+    })) || [];
 
-  const COLORS = ['#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#10b981', '#6b7280', '#ec4899'];
+  const claimsByArea =
+    stats.porArea?.map((a: any) => ({
+      area: a._id,
+      reclamos: a.cantidad,
+    })) || [];
+
+  const claimsByMonth =
+    stats.porMes?.map((m: any) => ({
+      month: m._id, // "YYYY-MM"
+      reclamos: m.cantidad,
+    })) || [];
 
   return (
     <div className="space-y-6">
@@ -110,30 +111,34 @@ export const AdminDashboard: React.FC = () => {
           <h2 className="text-gray-900 mb-1">Dashboard del Administrador</h2>
           <p className="text-gray-600">Vista general del sistema de reclamos</p>
         </div>
-        <div className="w-48">
-          <Label>Rango de Fechas</Label>
-          <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todo el tiempo</SelectItem>
-              <SelectItem value="7days">Últimos 7 días</SelectItem>
-              <SelectItem value="30days">Últimos 30 días</SelectItem>
-              <SelectItem value="90days">Últimos 90 días</SelectItem>
-            </SelectContent>
-          </Select>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <label>
+            Desde:
+            <input
+              type="date"
+              value={fechaInicio}
+              onChange={e => setFechaInicio(e.target.value)}
+            />
+          </label>
+          <label>
+            Hasta:
+            <input
+              type="date"
+              value={fechaFin}
+              onChange={e => setFechaFin(e.target.value)}
+            />
+          </label>
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Cards resumen */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total de Reclamos</p>
-                <p className="text-gray-900 mt-1">{stats.totalClaims}</p>
+                <p className="text-gray-900 mt-1">{stats.total}</p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                 <FileText className="w-6 h-6 text-blue-600" />
@@ -141,13 +146,14 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Clientes Activos</p>
-                <p className="text-gray-900 mt-1">{stats.totalClients}</p>
+                <p className="text-gray-900 mt-1">
+                  {stats.totalClientes ?? 0}
+                </p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                 <Users className="w-6 h-6 text-green-600" />
@@ -155,13 +161,14 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Reclamos Abiertos</p>
-                <p className="text-gray-900 mt-1">{stats.openClaims}</p>
+                <p className="text-gray-900 mt-1">
+                  {stats.abiertos ?? 0}
+                </p>
               </div>
               <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
                 <TrendingUp className="w-6 h-6 text-orange-600" />
@@ -169,13 +176,16 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Tiempo Prom. Resolución</p>
-                <p className="text-gray-900 mt-1">{stats.avgResolutionTime.toFixed(1)} días</p>
+                <p className="text-sm text-gray-600">
+                  Tiempo Prom. Resolución
+                </p>
+                <p className="text-gray-900 mt-1">
+                  {(stats.avgResolutionTime ?? 0).toFixed(1)} días
+                </p>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                 <Clock className="w-6 h-6 text-purple-600" />
@@ -185,7 +195,7 @@ export const AdminDashboard: React.FC = () => {
         </Card>
       </div>
 
-      {/* Charts Row 1 */}
+      {/* Charts fila 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -199,13 +209,18 @@ export const AdminDashboard: React.FC = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) =>
+                    `${name} ${(percent * 100).toFixed(0)}%`
+                  }
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {claimsByStatus.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  {claimsByStatus.map((entry: any, index: number) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -226,13 +241,18 @@ export const AdminDashboard: React.FC = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) =>
+                    `${name} ${(percent * 100).toFixed(0)}%`
+                  }
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {claimsByType.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  {claimsByType.map((entry: any, index: number) => (
+                    <Cell
+                      key={`cell-type-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -242,7 +262,7 @@ export const AdminDashboard: React.FC = () => {
         </Card>
       </div>
 
-      {/* Charts Row 2 */}
+      {/* Charts fila 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -274,7 +294,12 @@ export const AdminDashboard: React.FC = () => {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="reclamos" stroke="#3b82f6" strokeWidth={2} />
+                <Line
+                  type="monotone"
+                  dataKey="reclamos"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>

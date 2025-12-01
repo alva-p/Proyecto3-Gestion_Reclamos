@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { Reclamo, ReclamoDocument } from '../../Entidad/reclamo.schema';
 
 @Injectable()
@@ -10,35 +10,28 @@ export class ReclamosRepository {
     private readonly reclamoModel: Model<ReclamoDocument>,
   ) {}
 
+  // Crear reclamo
   async create(data: any): Promise<ReclamoDocument> {
     return this.reclamoModel.create(data);
   }
-  /*
+
+  // Buscar por ID (sin new ObjectId para evitar el BSONError)
   async findById(id: string): Promise<ReclamoDocument | null> {
     return this.reclamoModel
-      .findById(new Types.ObjectId(id))
-      .populate('cliente proyecto area subarea estado empleadoAsignado')
+      .findById(id)
+      .populate(
+        'tipoReclamo prioridad criticidad area subarea estadoActual asignadoActual historialIds resumenResolucionId',
+      )
       .exec();
   }
+
   // Listado con filtros
   async findAll(filters: any = {}): Promise<ReclamoDocument[]> {
     return this.reclamoModel
       .find(filters)
-      .populate('cliente proyecto area subarea estado empleadoAsignado')
-      .exec();
-  }
-  */
-  async findById(id: string): Promise<ReclamoDocument | null> {
-    return this.reclamoModel
-      .findById(new Types.ObjectId(id))
-      .populate('tipoReclamo prioridad criticidad area subarea estadoActual asignadoActual historialIds resumenResolucionId')
-      .exec();
-  }
-
-  async findAll(filters: any = {}): Promise<ReclamoDocument[]> {
-    return this.reclamoModel
-      .find(filters)
-      .populate('tipoReclamo prioridad criticidad area subarea estadoActual asignadoActual historialIds resumenResolucionId')
+      .populate(
+        'tipoReclamo prioridad criticidad area subarea estadoActual asignadoActual historialIds resumenResolucionId',
+      )
       .exec();
   }
 
@@ -112,7 +105,7 @@ export class ReclamosRepository {
       .exec();
   }
 
-  // Contar reclamos por proyecto (método que ya tenías)
+  // Contar reclamos por proyecto
   async countByProyecto(proyectoId: string): Promise<number> {
     return this.reclamoModel.countDocuments({ proyectoId }).exec();
   }

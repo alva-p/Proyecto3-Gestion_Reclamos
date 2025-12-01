@@ -27,7 +27,8 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { ClientesService } from '../clientes/clientes.service';
 
 @Controller('reclamos')
-@UseGuards(JwtAuthGuard, RolesGuard) // 🔐 activamos JWT + roles para TODO el controller
+// Cuando quieras volver a activar seguridad, descomentá esto:
+// @UseGuards(JwtAuthGuard, RolesGuard)
 export class ReclamosController {
   constructor(
     private readonly reclamosService: ReclamosService,
@@ -41,7 +42,6 @@ export class ReclamosController {
     @Body() createReclamoDto: CreateReclamoDto,
     @CurrentUser() user: any,
   ) {
-    // IMPORTANTÍSIMO: el campo que viene del JwtStrategy es user.userId, no "id"
     if (!user) {
       throw new BadRequestException('Usuario no autenticado');
     }
@@ -55,26 +55,70 @@ export class ReclamosController {
       );
     }
 
-    // Pasamos clienteId al service de reclamos
     return this.reclamosService.createReclamo(
       (cliente._id as any).toString(),
       createReclamoDto,
     );
   }
 
-  // 2 - Listado con filtros
+  // 2 - Estadísticas por empleado
+  // ⚠ Importante: esta ruta debe ir ANTES de @Get(':id') para evitar conflictos
+  @Get('estadisticas-empleado')
+  // Cuando vuelvas a activar seguridad:
+  // @Roles('EMPLEADO', 'ADMIN')
+  getEstadisticasEmpleado(
+    @Query('empleadoId') empleadoId: string,
+    @Query('fechaInicio') fechaInicio?: string,
+    @Query('fechaFin') fechaFin?: string,
+  ) {
+    return this.reclamosService.obtenerEstadisticasEmpleado(
+      empleadoId,
+      fechaInicio,
+      fechaFin,
+    );
+  }
+
+  // 3 - Estadísticas por cliente
+  @Get('estadisticas-cliente')
+  // Cuando vuelvas a activar seguridad:
+  // @Roles('CLIENTE')
+  getEstadisticasCliente(
+    @Query('clienteId') clienteId: string,
+    @Query('fechaInicio') fechaInicio?: string,
+    @Query('fechaFin') fechaFin?: string,
+  ) {
+    return this.reclamosService.obtenerEstadisticasCliente(
+      clienteId,
+      fechaInicio,
+      fechaFin,
+    );
+  }
+
+  // 4 - Estadísticas ADMIN (dashboard general)
+  @Get('estadisticas-admin')
+  // Cuando vuelvas a activar seguridad:
+  // @Roles('ADMIN')
+  getEstadisticasAdmin(
+    @Query('fechaInicio') fechaInicio?: string,
+    @Query('fechaFin') fechaFin?: string,
+  ) {
+    return this.reclamosService.obtenerEstadisticasAdmin(
+      fechaInicio,
+      fechaFin,
+    );
+  }
+
+  // 5 - Listado con filtros
   @Get()
-  // acá podrías poner @Roles('ADMIN', 'EMPLEADO') si querés restringir
   findAll(@Query() filters: any) {
     return this.reclamosService.findAll(filters);
   }
 
-  // 3 - Buscar por ID
+  // 6 - Buscar por ID
   @Get(':id')
   async findById(@Param('id') id: string, @CurrentUser() user: any) {
     const reclamo = await this.reclamosService.findById(id);
 
-    // Si hay usuario logueado y su rol es CLIENTE -> sanitizamos
     if (user) {
       const rolNombre =
         typeof user.rol === 'object' && user.rol !== null
@@ -86,20 +130,17 @@ export class ReclamosController {
       }
     }
 
-    // Admin / empleado ven el objeto completo
     return reclamo;
   }
 
-  // 4 - Actualizar datos base
+  // 7 - Actualizar datos base
   @Patch(':id')
-  // opcional: @Roles('ADMIN', 'EMPLEADO')
   update(@Param('id') id: string, @Body() dto: UpdateReclamoDto) {
     return this.reclamosService.update(id, dto);
   }
 
-  // 5 - Cambiar estado
+  // 8 - Cambiar estado
   @Patch(':id/estado')
-  // opcional: @Roles('ADMIN', 'EMPLEADO')
   cambiarEstado(
     @Param('id') reclamoId: string,
     @Body() dto: CambiarEstadoReclamoDto,
@@ -107,9 +148,8 @@ export class ReclamosController {
     return this.reclamosService.cambiarEstado(reclamoId, dto);
   }
 
-  // 6 - Asignar empleado
+  // 9 - Asignar empleado
   @Patch(':id/asignar')
-  // opcional: @Roles('ADMIN')
   asignarEmpleado(
     @Param('id') reclamoId: string,
     @Body() dto: AsignarEmpleadoDto,
@@ -117,14 +157,12 @@ export class ReclamosController {
     return this.reclamosService.asignarEmpleado(reclamoId, dto);
   }
 
-  // 8 - Cerrar reclamo
+  // 11 - Cerrar reclamo
   @Patch(':id/cerrar')
-  // opcional: @Roles('ADMIN', 'EMPLEADO')
   cerrarReclamo(
     @Param('id') reclamoId: string,
     @Body() dto: CrearResumenResolucionDto,
   ) {
-    // Opción A: todo el cierre se orquesta en el service
     return this.reclamosService.cerrarReclamo(reclamoId, dto);
   }
 }

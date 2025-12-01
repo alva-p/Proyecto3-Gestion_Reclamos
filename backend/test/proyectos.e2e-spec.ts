@@ -81,10 +81,6 @@ describe('Proyectos – Integración', () => {
   afterAll(async () => {
     await app.close();
   });
-
-  // =========================================================
-  // CP01 / CP02: Registrar Proyecto y proyecto duplicado
-  // =========================================================
   describe('CP01 / CP02 – Registrar Proyecto y duplicado', () => {
     beforeEach(async () => {
       await proyectoModel.deleteMany({});
