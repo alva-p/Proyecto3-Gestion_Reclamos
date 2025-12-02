@@ -1,34 +1,67 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
-import { mockRegistrationRequests } from '../data/mockData';
-import { Check, X, Eye } from 'lucide-react';
-import { RegistrationRequest } from '../types';
-import { toast } from 'sonner@2.0.3';
+import { Check, X, Eye, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { clientesApi, ClienteResponse } from '../services/api';
 
 export const RegistrationRequestsView: React.FC = () => {
-  const [selectedRequest, setSelectedRequest] = useState<RegistrationRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<ClienteResponse | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [pendingRequests, setPendingRequests] = useState<ClienteResponse[]>([]);
+  const [processedRequests, setProcessedRequests] = useState<ClienteResponse[]>([]);
 
-  const pendingRequests = mockRegistrationRequests.filter(r => r.status === 'pendiente');
-  const processedRequests = mockRegistrationRequests.filter(r => r.status !== 'pendiente');
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const [pendientes, todos] = await Promise.all([
+        clientesApi.getPendientes(),
+        clientesApi.getAll(),
+      ]);
+      setPendingRequests(pendientes);
+      const processed = todos.filter(c => {
+        const estado = c.estadoSolicitud?.nombre || (typeof c.estadoSolicitud === 'string' ? c.estadoSolicitud : '');
+        return estado && estado !== 'PENDIENTE';
+      });
+      setProcessedRequests(processed);
+    } catch (err: any) {
+      toast.error(err.message || 'Error al cargar solicitudes');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const handleViewDetail = (request: RegistrationRequest) => {
+  useEffect(() => { loadData(); }, []);
+
+  const handleViewDetail = (request: ClienteResponse) => {
     setSelectedRequest(request);
     setIsDetailOpen(true);
   };
 
-  const handleApprove = (request: RegistrationRequest) => {
-    toast.success(`Solicitud de ${request.name} aprobada. Se enviará un correo de confirmación.`);
-    setIsDetailOpen(false);
+  const handleApprove = async (request: ClienteResponse) => {
+    try {
+      await clientesApi.aprobar(request._id);
+      toast.success(`Solicitud de ${getNombre(request)} aprobada.`);
+      setIsDetailOpen(false);
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || 'No se pudo aprobar');
+    }
   };
 
-  const handleReject = (request: RegistrationRequest) => {
-    toast.success(`Solicitud de ${request.name} rechazada. Se enviará un correo de notificación.`);
-    setIsDetailOpen(false);
+  const handleReject = async (request: ClienteResponse) => {
+    try {
+      await clientesApi.rechazar(request._id);
+      toast.success(`Solicitud de ${getNombre(request)} rechazada.`);
+      setIsDetailOpen(false);
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || 'No se pudo rechazar');
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -51,12 +84,34 @@ export const RegistrationRequestsView: React.FC = () => {
     );
   };
 
+  const getEstado = (c: ClienteResponse) => {
+    const nombre = c.estadoSolicitud?.nombre || (typeof c.estadoSolicitud === 'string' ? c.estadoSolicitud : '') || '';
+    const map: Record<string,string> = { PENDIENTE: 'pendiente', APROBADO: 'registrado', RECHAZADO: 'rechazado' };
+    return map[nombre] || 'pendiente';
+  };
+
+  const getNombre = (c: ClienteResponse) => {
+    return typeof c.usuarioId === 'object' && c.usuarioId?.nombre ? c.usuarioId.nombre : '-';
+  };
+
+  const getCorreo = (c: ClienteResponse) => {
+    return typeof c.usuarioId === 'object' && c.usuarioId?.correo ? c.usuarioId.correo : '-';
+  };
+
+  const formatDate = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('es-AR') : '-');
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-gray-900 mb-1">Solicitudes de Registro</h2>
         <p className="text-gray-600">Gestione las solicitudes de acceso de nuevos clientes</p>
       </div>
+
+      {isLoading && (
+        <div className="flex items-center gap-2 text-gray-600">
+          <Loader2 className="h-4 w-4 animate-spin" /> Cargando solicitudes...
+        </div>
+      )}
 
       {/* Pending Requests */}
       <Card>
@@ -85,14 +140,12 @@ export const RegistrationRequestsView: React.FC = () => {
                   </TableRow>
                 ) : (
                   pendingRequests.map((request) => (
-                    <TableRow key={request.id}>
-                      <TableCell>{request.name}</TableCell>
-                      <TableCell>{request.company}</TableCell>
-                      <TableCell>{request.email}</TableCell>
-                      <TableCell>{request.phone}</TableCell>
-                      <TableCell>
-                        {request.createdAt.toLocaleDateString('es-AR')}
-                      </TableCell>
+                    <TableRow key={request._id}>
+                      <TableCell>{getNombre(request)}</TableCell>
+                      <TableCell>{request.empresa}</TableCell>
+                      <TableCell>{getCorreo(request)}</TableCell>
+                      <TableCell>{request.telefono || '-'}</TableCell>
+                      <TableCell>{formatDate(request.createdAt)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-2 justify-end">
                           <Button
@@ -157,17 +210,13 @@ export const RegistrationRequestsView: React.FC = () => {
                   </TableRow>
                 ) : (
                   processedRequests.map((request) => (
-                    <TableRow key={request.id}>
-                      <TableCell>{request.name}</TableCell>
-                      <TableCell>{request.company}</TableCell>
-                      <TableCell>{request.email}</TableCell>
-                      <TableCell>{getStatusBadge(request.status)}</TableCell>
-                      <TableCell>
-                        {request.createdAt.toLocaleDateString('es-AR')}
-                      </TableCell>
-                      <TableCell>
-                        {request.processedAt?.toLocaleDateString('es-AR')}
-                      </TableCell>
+                    <TableRow key={request._id}>
+                      <TableCell>{getNombre(request)}</TableCell>
+                      <TableCell>{request.empresa}</TableCell>
+                      <TableCell>{getCorreo(request)}</TableCell>
+                      <TableCell>{getStatusBadge(getEstado(request))}</TableCell>
+                      <TableCell>{formatDate(request.createdAt)}</TableCell>
+                      <TableCell>{formatDate(request.updatedAt)}</TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="ghost"
@@ -197,37 +246,35 @@ export const RegistrationRequestsView: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Nombre</p>
-                  <p className="text-gray-900">{selectedRequest.name}</p>
+                  <p className="text-gray-900">{getNombre(selectedRequest)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Empresa</p>
-                  <p className="text-gray-900">{selectedRequest.company}</p>
+                  <p className="text-gray-900">{selectedRequest.empresa}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Correo</p>
-                  <p className="text-gray-900">{selectedRequest.email}</p>
+                  <p className="text-gray-900">{getCorreo(selectedRequest)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Teléfono</p>
-                  <p className="text-gray-900">{selectedRequest.phone}</p>
+                  <p className="text-gray-900">{selectedRequest.telefono || '-'}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-sm text-gray-600">Dirección</p>
-                  <p className="text-gray-900">{selectedRequest.address}</p>
+                  <p className="text-gray-900">{selectedRequest.direccion || '-'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Estado</p>
-                  {getStatusBadge(selectedRequest.status)}
+                  {getStatusBadge(getEstado(selectedRequest))}
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Fecha Solicitud</p>
-                  <p className="text-gray-900">
-                    {selectedRequest.createdAt.toLocaleDateString('es-AR')}
-                  </p>
+                  <p className="text-gray-900">{formatDate(selectedRequest.createdAt)}</p>
                 </div>
               </div>
 
-              {selectedRequest.status === 'pendiente' && (
+              {getEstado(selectedRequest) === 'pendiente' && (
                 <div className="flex gap-2 pt-4">
                   <Button
                     className="flex-1"

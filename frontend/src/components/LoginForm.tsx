@@ -15,9 +15,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onRegisterClick }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -26,9 +27,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onRegisterClick }) => {
       return;
     }
 
-    const success = login(email, password);
-    if (!success) {
-      setError('Correo o contraseña incorrectos');
+    setIsLoading(true);
+    try {
+      await login(email, password);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Error al iniciar sesión';
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -82,31 +88,32 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onRegisterClick }) => {
                 </Alert>
               )}
 
-              <Button type="submit" className="w-full">
-                Iniciar Sesión
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
               </Button>
             </form>
 
             <div className="mt-6 pt-6 border-t">
               <p className="text-center text-sm text-gray-600">
-                ¿No tiene cuenta?{' '}
+                ¿No tienes cuenta?{' '}
                 <button
+                  type="button"
                   onClick={onRegisterClick}
-                  className="text-indigo-600 hover:text-indigo-700"
+                  className="text-indigo-600 hover:text-indigo-700 font-medium hover:underline"
                 >
                   Solicitar acceso
                 </button>
               </p>
               
-              <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-2">Usuarios de prueba:</p>
-                <div className="space-y-1 text-xs">
-                  <p><strong>Cliente:</strong> cliente@empresa.com</p>
-                  <p><strong>Empleado:</strong> empleado@empresa.com</p>
-                  <p><strong>Admin:</strong> admin@empresa.com</p>
-                  <p className="text-gray-400 mt-2">Contraseña: cualquiera</p>
+              {import.meta.env.DEV && (
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                  <p className="text-xs text-gray-500 mb-2">Credenciales de prueba:</p>
+                  <div className="space-y-1 text-xs">
+                    <p><strong>Admin:</strong> admin@sistema.com / Admin123!</p>
+                    <p><strong>Cliente:</strong> cliente.demo@sistema.com / Cliente123!</p>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>

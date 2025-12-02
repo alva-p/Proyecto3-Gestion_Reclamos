@@ -10,7 +10,8 @@ import {
   Users,
   UserCircle,
   ClipboardList,
-  User
+  User,
+  Layers
 } from 'lucide-react';
 import { roleLabels } from '../utils/translations';
 import { Separator } from './ui/separator';
@@ -33,23 +34,24 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
 
     let roleItems = [];
 
-    if (user.role === 'cliente') {
+    if (user.rol === 'cliente') {
       roleItems = [
         { id: 'my-claims', label: 'Mis Reclamos', icon: FileText },
-        { id: 'projects', label: 'Proyectos', icon: FolderKanban },
         { id: 'new-claim', label: 'Nuevo Reclamo', icon: ClipboardList },
       ];
     }
 
-    if (user.role === 'empleado') {
+    if (user.rol === 'empleado') {
       roleItems = [
         { id: 'all-claims', label: 'Reclamos', icon: FileText },
       ];
     }
 
-    if (user.role === 'administrador') {
+    if (user.rol === 'admin') {
       roleItems = [
         { id: 'all-claims', label: 'Reclamos', icon: FileText },
+        { id: 'projects', label: 'Proyectos', icon: FolderKanban },
+        { id: 'areas', label: 'Áreas', icon: Layers },
         { id: 'requests', label: 'Solicitudes', icon: UserCircle },
         { id: 'users', label: 'Usuarios', icon: Users },
       ];
@@ -78,7 +80,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
                 <h1 className="text-gray-900">Gestión de Reclamos</h1>
                 {user && (
                   <p className="text-sm text-gray-600">
-                    {user.name} · {roleLabels[user.role]}
+                    {user.nombre} · {roleLabels[user.rol] || user.rol.toUpperCase()}
                   </p>
                 )}
               </div>

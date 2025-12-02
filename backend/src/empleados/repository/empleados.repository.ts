@@ -15,21 +15,22 @@ export class EmpleadosRepository {
   }
 
   async findAll(): Promise<Empleado[]> {
-    return this.empleadoModel.find().populate('subarea').exec();
+    return this.empleadoModel.find().populate('subarea').populate('usuarioId').exec();
   }
 
   async findById(id: string): Promise<Empleado | null> {
     if (!Types.ObjectId.isValid(id)) {
       return null;
     }
-    return this.empleadoModel.findById(id).populate('subarea').exec();
+    return this.empleadoModel.findById(id).populate('subarea').populate('usuarioId').exec();
   }
 
   async findByUsuarioId(usuarioId: string): Promise<Empleado | null> {
     if (!Types.ObjectId.isValid(usuarioId)) {
       return null;
     }
-    return this.empleadoModel.findOne({ usuarioId }).populate('subarea').exec();
+    // Convertir a ObjectId para la búsqueda
+    return this.empleadoModel.findOne({ usuarioId: new Types.ObjectId(usuarioId) }).populate('subarea').populate('usuarioId').exec();
   }
 
   async findBySubarea(subareaId: string): Promise<Empleado[]> {

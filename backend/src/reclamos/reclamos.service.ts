@@ -55,7 +55,13 @@ export class ReclamosService {
         if (!proyecto) {
             throw new NotFoundException('El proyecto no existe.');
         }
-        if (!new Types.ObjectId(clienteId).equals(proyecto.clienteId as any)) {
+        
+        // Extraer el ID correcto si clienteId está populado
+        const proyectoClienteId = typeof proyecto.clienteId === 'object' && proyecto.clienteId !== null
+            ? ((proyecto.clienteId as any)._id?.toString() ?? (proyecto.clienteId as any).toString())
+            : (proyecto.clienteId as any)?.toString();
+        
+        if (!new Types.ObjectId(clienteId).equals(new Types.ObjectId(proyectoClienteId))) {
             throw new BadRequestException('El proyecto no pertenece al cliente.');
         }
 
@@ -73,7 +79,12 @@ export class ReclamosService {
       throw new NotFoundException('No se encontró el estado inicial "Enviado".');
     }
 
+        // Generar numeroReclamo único (simple contador incremental)
+        const totalReclamos = await this.reclamosRepository.countAll();
+        const numeroReclamo = `REC-${String(totalReclamos + 1).padStart(6, '0')}`;
+
         const reclamo = await this.reclamosRepository.create({
+            numeroReclamo,
             titulo,
             descripcion,
             tipoReclamo,
@@ -115,7 +126,15 @@ export class ReclamosService {
     if (filters.area) query.area = filters.area;
     if (filters.clienteId) query.clienteId = filters.clienteId;
     if (filters.proyectoId) query.proyectoId = filters.proyectoId;
-    if (filters.asignadoActual) query.asignadoActual = filters.asignadoActual;
+    
+    // Convertir asignadoActual a ObjectId si es un string válido
+    if (filters.asignadoActual) {
+        if (Types.ObjectId.isValid(filters.asignadoActual)) {
+            query.asignadoActual = new Types.ObjectId(filters.asignadoActual);
+        } else {
+            query.asignadoActual = filters.asignadoActual;
+        }
+    }
 
         return this.reclamosRepository.findAll(query);
     }
@@ -136,7 +155,7 @@ export class ReclamosService {
 
     //CAMBIAR ESTADO
     async cambiarEstado(reclamoId: string, dto: CambiarEstadoReclamoDto) {
-        const { nuevoEstadoId, empleadoId  } = dto;
+      const { nuevoEstadoId, empleadoId, comentario } = dto;
 
     const reclamo = await this.reclamosRepository.findById(reclamoId);
     if (!reclamo) throw new NotFoundException('Reclamo no encontrado.');
@@ -148,14 +167,43 @@ export class ReclamosService {
       reclamo.estadoActual as any,
     );
 
-    if (estadoActual.nombre === 'Cerrado') {
-      throw new ConflictException('El reclamo ya está cerrado.');
-    }
+      if (estadoActual.nombre === 'Cerrado' || estadoActual.nombre === 'Cancelado') {
+        throw new ConflictException('El reclamo no permite modificaciones en estado actual.');
+      }
 
     if (empleadoId) {
       const empleado = await this.empleadosService.findById(empleadoId);
       if (!empleado) throw new NotFoundException('Empleado no encontrado.');
     }
+
+      // Si se intenta cerrar, requerir comentario y crear resumen de resolución
+      if (nuevoEstado.nombre === 'Cerrado') {
+        if (!comentario || comentario.trim().length === 0) {
+          throw new BadRequestException(
+            'Para cerrar el reclamo, se requiere ingresar un comentario.'
+          );
+        }
+
+        // Cambiar estado a Cerrado
+        await this.reclamosRepository.update(reclamoId, { estadoActual: nuevoEstado._id });
+
+        // Crear resumen de resolución usando el comentario; responsable opcional empleadoId
+        await this.resumenResolucionService.crearResumen(
+          { descripcion: comentario, responsableId: empleadoId ?? '' },
+          reclamoId,
+        );
+
+        // Historial del cierre
+        await this.historialReclamoService.createAndAttach(reclamoId, {
+          detalleAccion: 'Cierre de reclamo con comentario.',
+          empleado: empleadoId ?? null,
+          estadoReclamo: nuevoEstado._id,
+          area: reclamo.area,
+          subarea: reclamo.subarea,
+        });
+
+        return this.reclamosRepository.findById(reclamoId);
+      }
 
     await this.reclamosRepository.updateEstado(reclamoId, nuevoEstadoId);
 
@@ -165,6 +213,7 @@ export class ReclamosService {
       empleado: empleadoId ?? null,
       area: reclamo.area,
       subarea: reclamo.subarea,
+      comentario: comentario || undefined,
     });
 
     return this.reclamosRepository.findById(reclamoId);

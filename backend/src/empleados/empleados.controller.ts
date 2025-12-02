@@ -49,7 +49,17 @@ export class EmpleadosController {
   }
 
   // ------------------------------------------------------------------
-  // 3. OBTENER EMPLEADO POR ID
+  // 3. OBTENER EMPLEADO POR USUARIO ID (temporal debug)
+  // GET /empleados/by-usuario/:usuarioId
+  // ------------------------------------------------------------------
+  @Get('by-usuario/:usuarioId')
+  async findByUsuarioId(@Param('usuarioId') usuarioId: string) {
+    const empleado = await this.empleadosService.findByUsuarioId(usuarioId);
+    return empleado || { message: 'No se encontró empleado para este usuarioId' };
+  }
+
+  // ------------------------------------------------------------------
+  // 4. OBTENER EMPLEADO POR ID
   // GET /empleados/:id
   // Accesible por ADMIN y EMPLEADO (para ver su propio perfil)
   // ------------------------------------------------------------------

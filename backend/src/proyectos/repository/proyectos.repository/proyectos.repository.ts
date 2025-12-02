@@ -27,15 +27,15 @@ export class ProyectosRepository {
     if (nombre) {
       filter.nombre = { $regex: nombre, $options: 'i' };
     }
-    return this.proyectoModel.find(filter).populate('tipoProyecto').exec();
+    return this.proyectoModel.find(filter).populate('tipoProyecto').populate('clienteId', 'empresa usuarioId').exec();
   }
   async findById(id: string): Promise<Proyecto | null> {
-    return this.proyectoModel.findById(id).populate('tipoProyecto').exec();
+    return this.proyectoModel.findById(id).populate('tipoProyecto').populate('clienteId', 'empresa usuarioId').exec();
   }
 
 
   async findByCliente(clienteId: string): Promise<Proyecto[]> {
-    return this.proyectoModel.find({ clienteId }).populate('tipoProyecto').exec();
+    return this.proyectoModel.find({ clienteId }).populate('tipoProyecto').populate('clienteId', 'empresa usuarioId').exec();
   }
 
   async update(id: string, updateProyectoDto: Partial<{ nombre: string; descripcion: string; tipoProyecto: string; clienteId: string }>): Promise<Proyecto | null> {

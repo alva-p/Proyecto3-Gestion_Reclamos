@@ -1,12 +1,21 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { User } from '../types';
-import { mockUsers } from '../data/mockData';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { authApi, setAuthToken, getAuthToken } from '../services/api';
+
+interface User {
+  id: string;
+  nombre: string;
+  correo: string;
+  rol: string;
+  empleadoId?: string;
+  clienteId?: string;
+}
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => boolean;
+  login: (correo: string, contraseña: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,21 +34,53 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const login = (email: string, password: string): boolean => {
-    // Simulación simple de login
-    // En producción, esto debería validar contra un backend
-    const foundUser = mockUsers.find(u => u.email === email);
-    
-    if (foundUser) {
-      setUser(foundUser);
-      return true;
+  // Verificar si ya hay una sesión al cargar
+  useEffect(() => {
+    const token = getAuthToken();
+    if (token) {
+      // Intentar obtener datos del usuario desde el token o hacer una petición al backend
+      // Por ahora, simplemente marcamos como autenticado si hay token
+      // En una implementación más robusta, validarías el token con el backend
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        setUser({
+          id: payload.sub,
+          correo: payload.correo,
+          nombre: payload.nombre || payload.correo.split('@')[0],
+          rol: payload.rol,
+        });
+      } catch (error) {
+        // Token inválido, limpiar
+        localStorage.removeItem('auth_token');
+        setAuthToken(null);
+      }
     }
-    return false;
+    setIsLoading(false);
+  }, []);
+
+  const login = async (correo: string, contraseña: string): Promise<void> => {
+    try {
+      const response = await authApi.login({ correo, contraseña });
+      setAuthToken(response.accessToken);
+      setUser({
+        id: response.usuario.id,
+        nombre: response.usuario.nombre,
+        correo: response.usuario.correo,
+        rol: response.usuario.rol.toLowerCase(), // Normalizar a minúsculas
+        empleadoId: response.usuario.empleadoId,
+        clienteId: response.usuario.clienteId,
+      });
+    } catch (error) {
+      throw error;
+    }
   };
 
   const logout = () => {
     setUser(null);
+    setAuthToken(null);
+    localStorage.removeItem('auth_token');
   };
 
   return (
@@ -48,7 +89,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         user, 
         login, 
         logout, 
-        isAuthenticated: !!user 
+        isAuthenticated: !!user,
+        isLoading,
       }}
     >
       {children}

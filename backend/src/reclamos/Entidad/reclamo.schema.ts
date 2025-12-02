@@ -13,6 +13,9 @@ import { ResumenResolucion } from '../../resumen-resolucion/Entidad/resumen-reso
 import { Types } from 'mongoose';
 @Schema({ timestamps: true })
 export class Reclamo extends Document {
+  @Prop({ unique: true })
+  numeroReclamo: string;
+
   @Prop({ required: true })
   titulo: string;
 
@@ -46,11 +49,11 @@ export class Reclamo extends Document {
   @Prop({ type: Types.ObjectId, ref: 'ResumenResolucion', default: null })
   resumenResolucionId: string;
 
-  @Prop({ required: true })
-  proyectoId: string;
+  @Prop({ type: Types.ObjectId, ref: 'Proyecto', required: true })
+  proyectoId: Types.ObjectId | string;
 
-  @Prop({ required: true })
-  clienteId: string;
+  @Prop({ type: Types.ObjectId, ref: 'Cliente', required: true })
+  clienteId: Types.ObjectId | string;
 }
 export type ReclamoDocument = Reclamo & Document;
 export const ReclamoSchema = SchemaFactory.createForClass(Reclamo);

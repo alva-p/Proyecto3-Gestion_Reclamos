@@ -77,7 +77,10 @@ export class ClientesService {
     });
 
     // Activar usuario asociado
-    await this.usuariosService.activateUser(cliente.usuarioId.toString());
+    const usuarioId = typeof cliente.usuarioId === 'object' 
+      ? (cliente.usuarioId as any)._id.toString() 
+      : (cliente.usuarioId as any).toString();
+    await this.usuariosService.activateUser(usuarioId);
 
     return {
       cliente: clienteActualizado,

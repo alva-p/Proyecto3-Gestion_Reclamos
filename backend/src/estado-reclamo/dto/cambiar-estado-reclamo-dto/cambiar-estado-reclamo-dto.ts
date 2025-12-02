@@ -1,4 +1,4 @@
-import { IsMongoId, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsMongoId, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CambiarEstadoReclamoDto {
   @IsMongoId()
@@ -8,4 +8,10 @@ export class CambiarEstadoReclamoDto {
   @IsMongoId()
   @IsOptional()
   empleadoId?: string;
+
+  // Comentario requerido si el nuevo estado es "Cerrado"
+  @IsString()
+  @IsOptional()
+  @MinLength(10)
+  comentario?: string;
 }

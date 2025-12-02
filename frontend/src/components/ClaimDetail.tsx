@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -6,12 +6,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Separator } from './ui/separator';
-import { mockClaims, mockProjects, mockUsers, mockClaimHistory } from '../data/mockData';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Calendar, User, Building, Star } from 'lucide-react';
-import { statusLabels, priorityLabels, typeLabels, statusColors, priorityColors } from '../utils/translations';
-import { ClaimStatus } from '../types';
-import { toast } from 'sonner@2.0.3';
+import { ArrowLeft, Calendar, User, Building, Star, Loader2, AlertCircle } from 'lucide-react';
+import { statusLabels, priorityLabels, statusColors, priorityColors } from '../utils/translations';
+import { 
+  reclamosApi, 
+  estadosReclamoApi, 
+  comentariosInternosApi,
+  empleadosApi,
+  type ReclamoResponse, 
+  type EstadoReclamoResponse,
+  type ComentarioInternoResponse,
+  type EmpleadoResponse
+} from '../services/api';
+import { toast } from 'sonner';
+import { Alert, AlertDescription } from './ui/alert';
 
 interface ClaimDetailProps {
   claimId: string;
@@ -20,17 +29,103 @@ interface ClaimDetailProps {
 
 export const ClaimDetail: React.FC<ClaimDetailProps> = ({ claimId, onBack }) => {
   const { user } = useAuth();
-  const claim = mockClaims.find(c => c.id === claimId);
-  const [newStatus, setNewStatus] = useState<ClaimStatus | ''>('');
+  const [claim, setClaim] = useState<ReclamoResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [newStatus, setNewStatus] = useState('');
+  const [statusComment, setStatusComment] = useState('');
+  const [estados, setEstados] = useState<EstadoReclamoResponse[]>([]);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   const [assignedEmployee, setAssignedEmployee] = useState('');
   const [rating, setRating] = useState(0);
   const [ratingComment, setRatingComment] = useState('');
+  const [comentarios, setComentarios] = useState<ComentarioInternoResponse[]>([]);
+  const [nuevoComentario, setNuevoComentario] = useState('');
+  const [loadingComentarios, setLoadingComentarios] = useState(false);
+  const [enviandoComentario, setEnviandoComentario] = useState(false);
+  const [empleados, setEmpleados] = useState<EmpleadoResponse[]>([]);
+  const [selectedEmpleadoId, setSelectedEmpleadoId] = useState('');
+  const [asignando, setAsignando] = useState(false);
 
-  const claimHistory = useMemo(() => {
-    return mockClaimHistory
-      .filter(h => h.claimId === claimId)
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  useEffect(() => {
+    const loadClaim = async () => {
+      try {
+        setLoading(true);
+        const data = await reclamosApi.getById(claimId);
+        setClaim(data);
+      } catch (e) {
+        console.error(e);
+        toast.error('Error cargando reclamo');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadClaim();
   }, [claimId]);
+
+  useEffect(() => {
+    const loadEstados = async () => {
+      try {
+        const data = await estadosReclamoApi.getAll();
+        setEstados(data);
+      } catch (e) {
+        console.error('Error cargando estados:', e);
+      }
+    };
+    loadEstados();
+  }, []);
+
+  useEffect(() => {
+    const loadComentarios = async () => {
+      // Solo cargar comentarios si el usuario es empleado o admin
+      if (user?.rol !== 'empleado' && user?.rol !== 'admin') {
+        return;
+      }
+      
+      try {
+        setLoadingComentarios(true);
+        const data = await comentariosInternosApi.getByReclamoId(claimId);
+        setComentarios(data);
+      } catch (e) {
+        console.error('Error cargando comentarios:', e);
+      } finally {
+        setLoadingComentarios(false);
+      }
+    };
+    loadComentarios();
+  }, [claimId, user?.rol]);
+
+  useEffect(() => {
+    const loadEmpleados = async () => {
+      if (user?.rol !== 'admin') {
+        return;
+      }
+      
+      try {
+        const data = await empleadosApi.getAll();
+        setEmpleados(data);
+      } catch (e) {
+        console.error('Error cargando empleados:', e);
+      }
+    };
+    loadEmpleados();
+  }, [user?.rol]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Button variant="ghost" onClick={onBack}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Volver
+        </Button>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+            <p className="text-gray-600">Cargando reclamo...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (!claim) {
     return (
@@ -48,26 +143,74 @@ export const ClaimDetail: React.FC<ClaimDetailProps> = ({ claimId, onBack }) => 
     );
   }
 
-  const project = mockProjects.find(p => p.id === claim.projectId);
-  const client = mockUsers.find(u => u.id === claim.clientId);
-  const assignedUser = claim.assignedTo ? mockUsers.find(u => u.id === claim.assignedTo) : null;
-  const employees = mockUsers.filter(u => u.role === 'empleado');
+  const project = typeof claim.proyectoId === 'object' ? claim.proyectoId : null;
+  const client = typeof (claim as any).clienteId === 'object' ? (claim as any).clienteId : null;
+  const assignedUser = claim.empleadoAsignado;
+  const estadoNombre = typeof (claim as any).estadoActual === 'object' ? (claim as any).estadoActual?.nombre : '';
+  const prioridadNombre = typeof claim.prioridad === 'object' ? claim.prioridad?.nombre : '';
+  const criticidadNombre = typeof claim.criticidad === 'object' ? claim.criticidad?.nombre : '';
+  const tipoNombre = typeof claim.tipoReclamo === 'object' ? claim.tipoReclamo?.nombre : '';
 
-  const canModifyStatus = user?.role === 'empleado' || user?.role === 'administrador';
-  const canAssign = user?.role === 'administrador';
-  const canRate = user?.role === 'cliente' && claim.status === 'solucionado' && !claim.rating;
-  const isLocked = claim.status === 'cerrado' || claim.status === 'cancelado';
+  const canModifyStatus = user?.rol === 'empleado' || user?.rol === 'admin';
+  const canAssign = user?.rol === 'admin';
+  const canRate = user?.rol === 'cliente' && estadoNombre === 'Solucionado';
+  const isLocked = estadoNombre === 'Cerrado' || estadoNombre === 'Cancelado';
 
-  const handleStatusChange = () => {
-    if (!newStatus) return;
-    toast.success(`Estado actualizado a: ${statusLabels[newStatus]}`);
-    setNewStatus('');
+  const selectedEstado = estados.find(e => e._id === newStatus);
+  const isCerrandoReclamo = selectedEstado?.nombre === 'Cerrado';
+
+  const handleStatusChange = async () => {
+    if (!newStatus) {
+      toast.error('Por favor seleccione un estado');
+      return;
+    }
+
+    if (isCerrandoReclamo && (!statusComment || statusComment.trim().length === 0)) {
+      toast.error('Para cerrar el reclamo, debe ingresar un comentario obligatorio');
+      return;
+    }
+
+    if (isCerrandoReclamo && statusComment.trim().length < 10) {
+      toast.error('El comentario debe tener al menos 10 caracteres');
+      return;
+    }
+
+    try {
+      setUpdatingStatus(true);
+      const payload: { nuevoEstadoId: string; empleadoId?: string; comentario?: string } = {
+        nuevoEstadoId: newStatus,
+      };
+      
+      // Usar empleadoId si el usuario es empleado
+      if (user?.empleadoId) {
+        payload.empleadoId = user.empleadoId;
+      }
+      
+      if (statusComment.trim()) {
+        payload.comentario = statusComment.trim();
+      }
+      
+      await reclamosApi.cambiarEstado(claimId, payload);
+      
+      // Recargar reclamo actualizado
+      const updatedClaim = await reclamosApi.getById(claimId);
+      setClaim(updatedClaim);
+      
+      toast.success(`Estado actualizado correctamente`);
+      setNewStatus('');
+      setStatusComment('');
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || 'Error al cambiar el estado');
+    } finally {
+      setUpdatingStatus(false);
+    }
   };
 
   const handleAssign = () => {
     if (!assignedEmployee) return;
-    const employee = employees.find(e => e.id === assignedEmployee);
-    toast.success(`Reclamo asignado a: ${employee?.name}`);
+    // TODO: implementar API call para asignar empleado
+    toast.success(`Reclamo asignado correctamente`);
     setAssignedEmployee('');
   };
 
@@ -79,6 +222,73 @@ export const ClaimDetail: React.FC<ClaimDetailProps> = ({ claimId, onBack }) => 
     toast.success('Calificación enviada. Gracias por su feedback!');
     setRating(0);
     setRatingComment('');
+  };
+
+  const handleEnviarComentario = async () => {
+    if (!nuevoComentario.trim()) {
+      toast.error('El comentario no puede estar vacío');
+      return;
+    }
+
+    if (nuevoComentario.trim().length < 5) {
+      toast.error('El comentario debe tener al menos 5 caracteres');
+      return;
+    }
+
+    try {
+      setEnviandoComentario(true);
+      const comentario = await comentariosInternosApi.create(claimId, {
+        texto: nuevoComentario.trim(),
+      });
+      
+      setComentarios([comentario, ...comentarios]);
+      setNuevoComentario('');
+      toast.success('Comentario agregado');
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || 'Error al agregar comentario');
+    } finally {
+      setEnviandoComentario(false);
+    }
+  };
+
+  const handleEliminarComentario = async (comentarioId: string) => {
+    if (!confirm('¿Está seguro de eliminar este comentario?')) {
+      return;
+    }
+
+    try {
+      await comentariosInternosApi.delete(claimId, comentarioId);
+      setComentarios(comentarios.filter(c => c._id !== comentarioId));
+      toast.success('Comentario eliminado');
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || 'Error al eliminar comentario');
+    }
+  };
+
+  const handleAsignarEmpleado = async () => {
+    if (!selectedEmpleadoId) {
+      toast.error('Por favor seleccione un empleado');
+      return;
+    }
+
+    try {
+      setAsignando(true);
+      await reclamosApi.asignarEmpleado(claimId, selectedEmpleadoId);
+      
+      // Recargar reclamo actualizado
+      const updatedClaim = await reclamosApi.getById(claimId);
+      setClaim(updatedClaim);
+      
+      toast.success('Reclamo asignado correctamente');
+      setSelectedEmpleadoId('');
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || 'Error al asignar el reclamo');
+    } finally {
+      setAsignando(false);
+    }
   };
 
   return (
@@ -93,11 +303,11 @@ export const ClaimDetail: React.FC<ClaimDetailProps> = ({ claimId, onBack }) => 
         <CardHeader>
           <div className="flex items-start justify-between">
             <div>
-              <CardTitle>{claim.number}</CardTitle>
-              <p className="text-gray-600 mt-1">{claim.title}</p>
+              <CardTitle>{claim.numeroReclamo || 'Sin número'}</CardTitle>
+              <p className="text-gray-600 mt-1">{claim.titulo}</p>
             </div>
-            <Badge className={statusColors[claim.status]}>
-              {statusLabels[claim.status]}
+            <Badge className={statusColors[estadoNombre.toLowerCase().replace(' ', '_') as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'}>
+              {estadoNombre || 'Sin estado'}
             </Badge>
           </div>
         </CardHeader>
@@ -106,18 +316,18 @@ export const ClaimDetail: React.FC<ClaimDetailProps> = ({ claimId, onBack }) => 
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-gray-600">Descripción</p>
-                <p className="text-gray-900 mt-1">{claim.description}</p>
+                <p className="text-gray-900 mt-1">{claim.descripcion}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Tipo</p>
-                  <p className="text-gray-900 mt-1">{typeLabels[claim.type]}</p>
+                  <p className="text-gray-900 mt-1">{tipoNombre || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Prioridad</p>
-                  <Badge className={priorityColors[claim.priority]}>
-                    {priorityLabels[claim.priority]}
+                  <Badge className={priorityColors[prioridadNombre.toLowerCase() as keyof typeof priorityColors] || 'bg-gray-100 text-gray-800'}>
+                    {prioridadNombre || 'N/A'}
                   </Badge>
                 </div>
               </div>
@@ -125,13 +335,13 @@ export const ClaimDetail: React.FC<ClaimDetailProps> = ({ claimId, onBack }) => 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Criticidad</p>
-                  <Badge className={priorityColors[claim.criticality]}>
-                    {priorityLabels[claim.criticality]}
+                  <Badge className={priorityColors[criticidadNombre.toLowerCase() as keyof typeof priorityColors] || 'bg-gray-100 text-gray-800'}>
+                    {criticidadNombre || 'N/A'}
                   </Badge>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Proyecto</p>
-                  <p className="text-gray-900 mt-1">{project?.name}</p>
+                  <p className="text-gray-900 mt-1">{project?.nombre || 'N/A'}</p>
                 </div>
               </div>
             </div>
@@ -141,8 +351,7 @@ export const ClaimDetail: React.FC<ClaimDetailProps> = ({ claimId, onBack }) => 
                 <User className="w-4 h-4 text-gray-500 mt-0.5" />
                 <div>
                   <p className="text-sm text-gray-600">Cliente</p>
-                  <p className="text-gray-900">{client?.name}</p>
-                  <p className="text-sm text-gray-500">{client?.email}</p>
+                  <p className="text-gray-900">{client?.empresa || 'N/A'}</p>
                 </div>
               </div>
 
@@ -151,8 +360,10 @@ export const ClaimDetail: React.FC<ClaimDetailProps> = ({ claimId, onBack }) => 
                   <Building className="w-4 h-4 text-gray-500 mt-0.5" />
                   <div>
                     <p className="text-sm text-gray-600">Asignado a</p>
-                    <p className="text-gray-900">{assignedUser.name}</p>
-                    <p className="text-sm text-gray-500">{claim.assignedArea}</p>
+                    <p className="text-gray-900">{assignedUser.nombre || 'N/A'}</p>
+                    {claim.area && typeof claim.area === 'object' && (
+                      <p className="text-sm text-gray-500">{claim.area.nombre}</p>
+                    )}
                   </div>
                 </div>
               )}
@@ -162,98 +373,147 @@ export const ClaimDetail: React.FC<ClaimDetailProps> = ({ claimId, onBack }) => 
                 <div>
                   <p className="text-sm text-gray-600">Fechas</p>
                   <p className="text-sm text-gray-900">
-                    Creado: {claim.createdAt.toLocaleDateString('es-AR')}
+                    Creado: {(claim as any).createdAt ? new Date((claim as any).createdAt).toLocaleDateString('es-AR') : 'N/A'}
                   </p>
                   <p className="text-sm text-gray-900">
-                    Actualizado: {claim.updatedAt.toLocaleDateString('es-AR')}
+                    Actualizado: {(claim as any).updatedAt ? new Date((claim as any).updatedAt).toLocaleDateString('es-AR') : 'N/A'}
                   </p>
                 </div>
               </div>
-
-              {claim.rating && (
-                <div>
-                  <p className="text-sm text-gray-600 mb-2">Calificación del cliente</p>
-                  <div className="flex gap-1 mb-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star
-                        key={star}
-                        className={`w-5 h-5 ${
-                          star <= claim.rating! ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  {claim.ratingComment && (
-                    <p className="text-sm text-gray-700 italic">"{claim.ratingComment}"</p>
-                  )}
-                </div>
-              )}
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Actions */}
-      {!isLocked && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {canModifyStatus && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Cambiar Estado</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Nuevo Estado</Label>
-                  <Select value={newStatus} onValueChange={(value) => setNewStatus(value as ClaimStatus)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar estado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="en_revision">En Revisión</SelectItem>
-                      <SelectItem value="asignado">Asignado</SelectItem>
-                      <SelectItem value="en_proceso">En Proceso</SelectItem>
-                      <SelectItem value="solucionado">Solucionado</SelectItem>
-                      <SelectItem value="cerrado">Cerrado</SelectItem>
-                      <SelectItem value="cancelado">Cancelado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button onClick={handleStatusChange} className="w-full">
-                  Actualizar Estado
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {canModifyStatus && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Cambiar Estado</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isLocked && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Este reclamo está en estado {estadoNombre} y no permite cambios.
+                  </AlertDescription>
+                </Alert>
+              )}
 
-          {canAssign && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Asignar Reclamo</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Empleado</Label>
-                  <Select value={assignedEmployee} onValueChange={setAssignedEmployee}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar empleado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {employees.map((emp) => (
-                        <SelectItem key={emp.id} value={emp.id}>
-                          {emp.name} - {emp.area}
+              {!isLocked && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Nuevo Estado</Label>
+                    <Select value={newStatus} onValueChange={setNewStatus} disabled={updatingStatus}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {estados.map((estado) => (
+                          <SelectItem key={estado._id} value={estado._id}>
+                            {estado.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {isCerrandoReclamo && (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Al cerrar el reclamo, debe ingresar obligatoriamente un comentario de resolución.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label>
+                      Comentario {isCerrandoReclamo && <span className="text-red-500">*</span>}
+                    </Label>
+                    <Textarea
+                      value={statusComment}
+                      onChange={(e) => setStatusComment(e.target.value)}
+                      placeholder={isCerrandoReclamo ? "Comentario de resolución (obligatorio)" : "Comentario opcional sobre el cambio de estado"}
+                      rows={4}
+                      disabled={updatingStatus}
+                    />
+                    {isCerrandoReclamo && statusComment.trim().length > 0 && statusComment.trim().length < 10 && (
+                      <p className="text-sm text-red-500">Mínimo 10 caracteres</p>
+                    )}
+                  </div>
+
+                  <Button 
+                    onClick={handleStatusChange} 
+                    className="w-full"
+                    disabled={updatingStatus || !newStatus}
+                  >
+                    {updatingStatus ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Actualizando...
+                      </>
+                    ) : (
+                      'Actualizar Estado'
+                    )}
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {canAssign && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Asignar Reclamo</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Empleado</Label>
+                <Select 
+                  value={selectedEmpleadoId} 
+                  onValueChange={setSelectedEmpleadoId}
+                  disabled={asignando}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar empleado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {empleados.map((empleado) => {
+                      const subareaInfo = typeof empleado.subarea === 'object' && empleado.subarea
+                        ? ` - ${empleado.subarea.nombre}`
+                        : '';
+                      const nombreEmpleado = empleado.usuarioId?.nombre || 'Sin nombre';
+                      return (
+                        <SelectItem key={empleado._id} value={empleado._id}>
+                          {nombreEmpleado}{subareaInfo}
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button onClick={handleAssign} className="w-full">
-                  Asignar
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button 
+                onClick={handleAsignarEmpleado}
+                className="w-full"
+                disabled={asignando || !selectedEmpleadoId}
+              >
+                {asignando ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Asignando...
+                  </>
+                ) : (
+                  'Asignar'
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {/* Rating */}
       {canRate && (
@@ -296,47 +556,175 @@ export const ClaimDetail: React.FC<ClaimDetailProps> = ({ claimId, onBack }) => 
         </Card>
       )}
 
+      {/* Comentarios Internos - Temporalmente ocultos */}
+      {false && (user?.rol === 'empleado' || user?.rol === 'admin') && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Comentarios Internos</CardTitle>
+            <p className="text-sm text-gray-600 mt-1">
+              Espacio privado para coordinación del equipo. No visible para clientes.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Formulario para nuevo comentario */}
+            <div className="space-y-2">
+              <Label>Nuevo Comentario</Label>
+              <Textarea
+                value={nuevoComentario}
+                onChange={(e) => setNuevoComentario(e.target.value)}
+                placeholder="Escribir comentario interno..."
+                rows={3}
+                disabled={enviandoComentario}
+              />
+              <Button 
+                onClick={handleEnviarComentario}
+                disabled={enviandoComentario || nuevoComentario.trim().length < 5}
+              >
+                {enviandoComentario ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  'Agregar Comentario'
+                )}
+              </Button>
+            </div>
+
+            <Separator />
+
+            {/* Lista de comentarios */}
+            <div className="space-y-3">
+              {loadingComentarios ? (
+                <div className="text-center py-4">
+                  <Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-600" />
+                  <p className="text-sm text-gray-600 mt-2">Cargando comentarios...</p>
+                </div>
+              ) : comentarios.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-4">
+                  No hay comentarios internos aún. Sea el primero en comentar.
+                </p>
+              ) : (
+                comentarios.map((comentario) => {
+                  const usuario = typeof comentario.usuarioId === 'object' 
+                    ? comentario.usuarioId 
+                    : null;
+                  const esPropio = user?.id === usuario?._id;
+                  
+                  return (
+                    <div key={comentario._id} className="border rounded-lg p-3 space-y-2">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <User className="w-4 h-4 text-gray-500" />
+                          <span className="font-medium text-sm">
+                            {usuario?.nombre || 'Usuario'}
+                          </span>
+                          {esPropio && (
+                            <Badge variant="outline" className="text-xs">Tú</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500">
+                            {new Date(comentario.createdAt || comentario.fechaCreacion).toLocaleString('es-AR')}
+                          </span>
+                          {esPropio && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEliminarComentario(comentario._id)}
+                              className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                            >
+                              ×
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                        {comentario.texto}
+                      </p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* History */}
       <Card>
         <CardHeader>
           <CardTitle>Historial de Cambios</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {claimHistory.map((item, index) => (
-              <div key={item.id}>
-                {index > 0 && <Separator className="my-4" />}
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0">
-                    <div className="w-2 h-2 bg-indigo-600 rounded-full mt-2"></div>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-gray-900">{item.action}</p>
+          {claim.historialIds && claim.historialIds.length > 0 ? (
+            <div className="space-y-4">
+              {claim.historialIds
+                .sort((a, b) => new Date(b.fechaHora).getTime() - new Date(a.fechaHora).getTime())
+                .map((historial) => {
+                  const fecha = new Date(historial.fechaHora);
+                  const fechaFormateada = fecha.toLocaleDateString('es-ES', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                  });
+                  const horaFormateada = fecha.toLocaleTimeString('es-ES', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                  });
+                  
+                  const nombreEmpleado = historial.empleado?.usuarioId?.nombre || 'Sistema';
+                  const estadoNombre = historial.estadoReclamo?.nombre;
+                  const estadoKey = estadoNombre?.toLowerCase().replace(' ', '_') || 'enviado';
+                  const estadoColor = statusColors[estadoKey] || 'gray';
+                  
+                  // Mapeo de colores para clases completas de Tailwind
+                  const badgeClasses: Record<string, string> = {
+                    blue: 'bg-blue-100 text-blue-800',
+                    yellow: 'bg-yellow-100 text-yellow-800',
+                    purple: 'bg-purple-100 text-purple-800',
+                    orange: 'bg-orange-100 text-orange-800',
+                    green: 'bg-green-100 text-green-800',
+                    gray: 'bg-gray-100 text-gray-800',
+                    red: 'bg-red-100 text-red-800',
+                  };
+                  
+                  return (
+                    <div key={historial._id} className="flex items-start gap-3 border-l-2 border-blue-500 pl-4 py-2">
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900">{historial.detalleAccion}</p>
                         <p className="text-sm text-gray-600 mt-1">
-                          Por: {item.userName}
+                          Por: {nombreEmpleado}
                         </p>
-                        {item.status && (
-                          <Badge className={`${statusColors[item.status]} mt-2`}>
-                            {statusLabels[item.status]}
+                        {estadoNombre && (
+                          <Badge className={`mt-2 ${badgeClasses[estadoColor] || badgeClasses.gray}`}>
+                            {estadoNombre}
                           </Badge>
                         )}
-                        {item.assignedTo && (
-                          <p className="text-sm text-gray-600 mt-2">
-                            Área: {item.assignedArea}
+                        {historial.comentario && (
+                          <div className="mt-2 p-2 bg-gray-50 rounded border-l-2 border-gray-300">
+                            <p className="text-sm text-gray-700 italic">"{historial.comentario}"</p>
+                          </div>
+                        )}
+                        {historial.area && (
+                          <p className="text-sm text-gray-500 mt-1">
+                            Área: {historial.area.nombre}
                           </p>
                         )}
                       </div>
-                      <span className="text-sm text-gray-500">
-                        {item.timestamp.toLocaleDateString('es-AR')} {item.timestamp.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
+                      <div className="text-right text-sm text-gray-500 whitespace-nowrap">
+                        <p>{fechaFormateada} {horaFormateada}</p>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                  );
+                })}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-600">
+              No hay historial de cambios disponible.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -1,216 +1,347 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Badge } from './ui/badge';
-import { mockUsers } from '../data/mockData';
-import { Plus, Edit } from 'lucide-react';
-import { UserRole, User } from '../types';
-import { roleLabels } from '../utils/translations';
-import { toast } from 'sonner@2.0.3';
+import { Plus, Loader2, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
+import { usuariosApi, UsuarioResponse, clientesApi, ClienteResponse, subareasApi, SubareaResponse, areasApi, AreaResponse } from '../services/api';
+import { Alert, AlertDescription } from './ui/alert';
 
 export const UsersManagement: React.FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [usuarios, setUsuarios] = useState<UsuarioResponse[]>([]);
+  const [clientes, setClientes] = useState<ClienteResponse[]>([]);
+  const [subareas, setSubareas] = useState<SubareaResponse[]>([]);
+  const [areas, setAreas] = useState<AreaResponse[]>([]);
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    role: '' as UserRole | '',
-    area: '',
+    nombre: '',
+    correo: '',
+    contraseña: '',
+    rol: '' as 'EMPLEADO' | 'ADMIN' | '',
+    subareaId: '',
+    puesto: '',
   });
 
-  const handleOpenDialog = (user?: User) => {
-    if (user) {
-      setEditingUser(user);
-      setFormData({
-        name: user.name,
-        email: user.email,
-        password: '',
-        role: user.role,
-        area: user.area || '',
-      });
-    } else {
-      setEditingUser(null);
-      setFormData({
-        name: '',
-        email: '',
-        password: '',
-        role: '',
-        area: '',
-      });
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const [usuariosData, clientesData, subareasData, areasData] = await Promise.all([
+        usuariosApi.getAll(),
+        clientesApi.getAll(),
+        subareasApi.getAll(),
+        areasApi.getAll(),
+      ]);
+      setUsuarios(usuariosData);
+      setClientes(clientesData);
+      setSubareas(subareasData);
+      setAreas(areasData);
+    } catch (error: any) {
+      toast.error('Error al cargar datos: ' + error.message);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const handleOpenDialog = () => {
+    setFormData({
+      nombre: '',
+      correo: '',
+      contraseña: '',
+      rol: '',
+      subareaId: '',
+      puesto: '',
+    });
     setIsDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
-    setEditingUser(null);
     setFormData({
-      name: '',
-      email: '',
-      password: '',
-      role: '',
-      area: '',
+      nombre: '',
+      correo: '',
+      contraseña: '',
+      rol: '',
+      subareaId: '',
+      puesto: '',
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (editingUser) {
-      // Modo edición
-      toast.success('Usuario actualizado correctamente');
-    } else {
-      // Modo creación
-      // Validar que el email no exista
-      const emailExists = mockUsers.some(u => u.email === formData.email);
-      if (emailExists) {
-        toast.error('El correo electrónico ya está registrado');
-        return;
-      }
-
-      // Validar contraseña (mínimo 8 caracteres)
-      if (formData.password.length < 8) {
-        toast.error('La contraseña debe tener al menos 8 caracteres');
-        return;
-      }
-
-      toast.success('Usuario creado correctamente');
+  const validatePassword = (password: string): string | null => {
+    if (password.length < 8) {
+      return 'La contraseña debe tener al menos 8 caracteres';
     }
-    
-    handleCloseDialog();
+    if (!/[A-Z]/.test(password)) {
+      return 'La contraseña debe contener al menos una letra mayúscula';
+    }
+    if (!/[a-z]/.test(password)) {
+      return 'La contraseña debe contener al menos una letra minúscula';
+    }
+    if (!/[0-9]/.test(password)) {
+      return 'La contraseña debe contener al menos un número';
+    }
+    if (!/[!@#$%^&*]/.test(password)) {
+      return 'La contraseña debe contener al menos un carácter especial (!@#$%^&*)';
+    }
+    return null;
   };
 
-  const getRoleBadge = (role: UserRole) => {
-    const colors = {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+
+    try {
+      // Validar contraseña
+      const passwordError = validatePassword(formData.contraseña);
+      if (passwordError) {
+        toast.error(passwordError);
+        setIsSaving(false);
+        return;
+      }
+
+      // Verificar que el email no exista
+      const emailExists = usuarios.some(u => u.correo === formData.correo);
+      if (emailExists) {
+        toast.error('El correo electrónico ya está registrado');
+        setIsSaving(false);
+        return;
+      }
+
+      if (formData.rol === 'EMPLEADO') {
+        // Validar que tenga subárea seleccionada
+        if (!formData.subareaId) {
+          toast.error('Debe seleccionar una subárea para el empleado');
+          setIsSaving(false);
+          return;
+        }
+
+        await usuariosApi.createEmpleado({
+          nombre: formData.nombre,
+          correo: formData.correo,
+          contraseña: formData.contraseña,
+          subareaId: formData.subareaId,
+          puesto: formData.puesto || 'Empleado',
+        });
+        toast.success('Empleado registrado correctamente');
+      } else if (formData.rol === 'ADMIN') {
+        await usuariosApi.createAdmin({
+          nombre: formData.nombre,
+          correo: formData.correo,
+          contraseña: formData.contraseña,
+        });
+        toast.success('Administrador registrado correctamente');
+      }
+
+      handleCloseDialog();
+      loadData(); // Recargar lista
+    } catch (error: any) {
+      toast.error('Error al crear usuario: ' + error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const getRoleBadge = (rolName: string) => {
+    const normalized = rolName.toLowerCase();
+    const colors: Record<string, string> = {
       cliente: 'bg-blue-100 text-blue-800',
       empleado: 'bg-green-100 text-green-800',
-      administrador: 'bg-purple-100 text-purple-800',
+      admin: 'bg-purple-100 text-purple-800',
+    };
+
+    const labels: Record<string, string> = {
+      cliente: 'Cliente',
+      empleado: 'Empleado',
+      admin: 'Administrador',
     };
 
     return (
-      <Badge className={colors[role]}>
-        {roleLabels[role]}
+      <Badge className={colors[normalized] || 'bg-gray-100 text-gray-800'}>
+        {labels[normalized] || rolName}
       </Badge>
     );
   };
 
-  const internalUsers = mockUsers.filter(u => u.role !== 'cliente');
-  const clientUsers = mockUsers.filter(u => u.role === 'cliente');
+  const getRoleName = (rol: UsuarioResponse['rol']): string => {
+    if (typeof rol === 'string') return rol;
+    return rol.nombre;
+  };
+
+  const internalUsers = usuarios.filter(u => {
+    const rolName = getRoleName(u.rol).toLowerCase();
+    return rolName === 'empleado' || rolName === 'admin';
+  });
+
+  const clientUsers = clientes;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-gray-900 mb-1">Gestión de Usuarios</h2>
-          <p className="text-gray-600">Administre usuarios del sistema</p>
+          <p className="text-gray-600">Administre usuarios del sistema (Empleados y Administradores)</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => handleOpenDialog()}>
-              <Plus className="w-4 h-4 mr-2" />
-              Nuevo Usuario
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
+          <Button onClick={handleOpenDialog}>
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Usuario
+          </Button>
+          <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>
-                {editingUser ? 'Editar Usuario' : 'Registrar Nuevo Usuario'}
-              </DialogTitle>
+              <DialogTitle>Registrar Nuevo Usuario</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  Solo puede registrar Empleados o Administradores. Los clientes se registran mediante solicitudes.
+                </AlertDescription>
+              </Alert>
+
               <div className="space-y-2">
-                <Label htmlFor="name">Nombre Completo *</Label>
+                <Label htmlFor="nombre">Nombre Completo *</Label>
                 <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  id="nombre"
+                  value={formData.nombre}
+                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                   required
                   placeholder="Juan Pérez"
+                  disabled={isSaving}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Correo Electrónico *</Label>
+                <Label htmlFor="correo">Correo Electrónico *</Label>
                 <Input
-                  id="email"
+                  id="correo"
                   type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  value={formData.correo}
+                  onChange={(e) => setFormData({ ...formData, correo: e.target.value })}
                   required
                   placeholder="correo@empresa.com"
+                  disabled={isSaving}
                 />
               </div>
 
-              {!editingUser && (
-                <div className="space-y-2">
-                  <Label htmlFor="password">Contraseña *</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required
-                    placeholder="Mínimo 8 caracteres"
-                  />
-                  <p className="text-xs text-gray-500">
-                    Debe tener al menos 8 caracteres
-                  </p>
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="contraseña">Contraseña *</Label>
+                <Input
+                  id="contraseña"
+                  type="password"
+                  value={formData.contraseña}
+                  onChange={(e) => setFormData({ ...formData, contraseña: e.target.value })}
+                  required
+                  placeholder="Mínimo 8 caracteres"
+                  disabled={isSaving}
+                />
+                <p className="text-xs text-gray-500">
+                  Debe contener: 8+ caracteres, mayúscula, minúscula, número y carácter especial (!@#$%^&*)
+                </p>
+              </div>
 
               <div className="space-y-2">
-                <Label htmlFor="role">Rol *</Label>
+                <Label htmlFor="rol">Rol *</Label>
                 <Select
-                  value={formData.role}
-                  onValueChange={(value) => setFormData({ ...formData, role: value as UserRole })}
-                  required
+                  value={formData.rol}
+                  onValueChange={(value: 'EMPLEADO' | 'ADMIN') => 
+                    setFormData({ ...formData, rol: value, subareaId: value === 'ADMIN' ? '' : formData.subareaId })
+                  }
+                  disabled={isSaving}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar rol" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="empleado">Empleado</SelectItem>
-                    <SelectItem value="administrador">Administrador</SelectItem>
+                    <SelectItem value="EMPLEADO">Empleado</SelectItem>
+                    <SelectItem value="ADMIN">Administrador</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="area">Área *</Label>
-                <Select
-                  value={formData.area}
-                  onValueChange={(value) => setFormData({ ...formData, area: value })}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar área" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Soporte Técnico">Soporte Técnico</SelectItem>
-                    <SelectItem value="Marketing">Marketing</SelectItem>
-                    <SelectItem value="Ventas">Ventas</SelectItem>
-                    <SelectItem value="Administración">Administración</SelectItem>
-                    <SelectItem value="Desarrollo">Desarrollo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {formData.rol === 'EMPLEADO' && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="subareaId">Subárea * (solo una)</Label>
+                    <Select
+                      value={formData.subareaId}
+                      onValueChange={(value: string) => setFormData({ ...formData, subareaId: value })}
+                      disabled={isSaving}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar subárea" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subareas.length === 0 ? (
+                          <div className="px-2 py-1.5 text-sm text-gray-500">
+                            No hay subáreas disponibles
+                          </div>
+                        ) : (
+                          subareas.map(sub => {
+                            const areaName = typeof sub.area === 'object' ? sub.area.nombre : 
+                              areas.find(a => a._id === sub.area)?.nombre || 'Sin área';
+                            return (
+                              <SelectItem key={sub._id} value={sub._id}>
+                                {areaName} - {sub.nombre}
+                              </SelectItem>
+                            );
+                          })
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-500">
+                      El empleado debe pertenecer a una única subárea
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="puesto">Puesto (Opcional)</Label>
+                    <Input
+                      id="puesto"
+                      value={formData.puesto}
+                      onChange={(e) => setFormData({ ...formData, puesto: e.target.value })}
+                      placeholder="Ej: Desarrollador Senior"
+                      disabled={isSaving}
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="flex gap-2 justify-end pt-4">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleCloseDialog}
+                  disabled={isSaving}
                 >
                   Cancelar
                 </Button>
-                <Button type="submit">
-                  {editingUser ? 'Guardar Cambios' : 'Crear Usuario'}
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creando...
+                    </>
+                  ) : (
+                    'Crear Usuario'
+                  )}
                 </Button>
               </div>
             </form>
@@ -221,7 +352,7 @@ export const UsersManagement: React.FC = () => {
       {/* Internal Users */}
       <Card>
         <CardHeader>
-          <CardTitle>Usuarios Internos (Empleados y Administradores)</CardTitle>
+          <CardTitle>Usuarios Internos ({internalUsers.length})</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
@@ -231,33 +362,34 @@ export const UsersManagement: React.FC = () => {
                   <TableHead>Nombre</TableHead>
                   <TableHead>Correo</TableHead>
                   <TableHead>Rol</TableHead>
-                  <TableHead>Área</TableHead>
+                  <TableHead>Estado</TableHead>
                   <TableHead>Fecha Registro</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {internalUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>{getRoleBadge(user.role)}</TableCell>
-                    <TableCell>{user.area || '-'}</TableCell>
-                    <TableCell>
-                      {user.createdAt.toLocaleDateString('es-AR')}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleOpenDialog(user)}
-                      >
-                        <Edit className="w-4 h-4 mr-1" />
-                        Editar
-                      </Button>
+                {internalUsers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-gray-500 py-8">
+                      No hay usuarios internos registrados
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  internalUsers.map((user) => (
+                    <TableRow key={user._id}>
+                      <TableCell className="font-medium">{user.nombre}</TableCell>
+                      <TableCell>{user.correo}</TableCell>
+                      <TableCell>{getRoleBadge(getRoleName(user.rol))}</TableCell>
+                      <TableCell>
+                        <Badge className={user.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                          {user.activo ? 'Activo' : 'Inactivo'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {user.createdAt ? new Date(user.createdAt).toLocaleDateString('es-AR') : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
@@ -267,43 +399,42 @@ export const UsersManagement: React.FC = () => {
       {/* Client Users */}
       <Card>
         <CardHeader>
-          <CardTitle>Clientes Registrados</CardTitle>
+          <CardTitle>Clientes Registrados ({clientUsers.length})</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Correo</TableHead>
                   <TableHead>Empresa</TableHead>
+                  <TableHead>Correo</TableHead>
                   <TableHead>Teléfono</TableHead>
+                  <TableHead>Dirección</TableHead>
                   <TableHead>Fecha Registro</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {clientUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>{user.company || '-'}</TableCell>
-                    <TableCell>{user.phone || '-'}</TableCell>
-                    <TableCell>
-                      {user.createdAt.toLocaleDateString('es-AR')}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleOpenDialog(user)}
-                      >
-                        <Edit className="w-4 h-4 mr-1" />
-                        Editar
-                      </Button>
+                {clientUsers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-gray-500 py-8">
+                      No hay clientes registrados
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  clientUsers.map((cliente) => (
+                    <TableRow key={cliente._id}>
+                      <TableCell className="font-medium">{cliente.empresa}</TableCell>
+                      <TableCell>
+                        {typeof cliente.usuarioId === 'object' && cliente.usuarioId?.correo
+                          ? cliente.usuarioId.correo
+                          : '-'}
+                      </TableCell>
+                      <TableCell>{cliente.telefono || '-'}</TableCell>
+                      <TableCell>{cliente.direccion || '-'}</TableCell>
+                      <TableCell>-</TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -6,40 +6,87 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
-import { mockProjects, mockClaims } from '../data/mockData';
 import { useAuth } from '../contexts/AuthContext';
 import { Plus, Edit, Trash2, FolderKanban } from 'lucide-react';
-import { projectTypeLabels } from '../utils/translations';
-import { ProjectType } from '../types';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
+import { proyectosApi, tiposProyectoApi, reclamosApi, clientesApi, type ProyectoResponse, type TipoProyectoResponse, type ClienteResponse } from '../services/api';
 
 export const ProjectsView: React.FC = () => {
   const { user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    name: '',
-    type: '' as ProjectType | '',
-    description: '',
+    nombre: '',
+    tipoProyecto: '' as string | '',
+    descripcion: '',
+    clienteId: '',
   });
+  const [loading, setLoading] = useState(false);
+  const [loadingList, setLoadingList] = useState(true);
+  const [projects, setProjects] = useState<ProyectoResponse[]>([]);
+  const [tiposProyecto, setTiposProyecto] = useState<TipoProyectoResponse[]>([]);
+  const [clientes, setClientes] = useState<ClienteResponse[]>([]);
+  const [claims, setClaims] = useState<any[]>([]);
 
-  const userProjects = useMemo(() => {
-    return mockProjects.filter(p => p.clientId === user?.id);
-  }, [user?.id]);
+  // Cargar tipos de proyecto, clientes y lista inicial
+  useEffect(() => {
+    const loadAll = async () => {
+      try {
+        setLoadingList(true);
+        const [tipos, clientesData] = await Promise.all([
+          tiposProyectoApi.getAll(),
+          clientesApi.getAll(),
+        ]);
+        setTiposProyecto(tipos);
+        setClientes(clientesData);
+      } catch (e) {
+        console.error(e);
+        toast.error('Error cargando datos iniciales');
+      } finally {
+        setLoadingList(false);
+      }
+    };
+    loadAll();
+  }, []);
+
+  const refreshProjects = async () => {
+    try {
+      setLoadingList(true);
+      // Admin ve todos los proyectos sin filtro
+      const [proyectosData, reclamosData] = await Promise.all([
+        proyectosApi.getAll(),
+        reclamosApi.getAll(),
+      ]);
+      setProjects(proyectosData);
+      setClaims(reclamosData);
+    } catch (e) {
+      console.error(e);
+      toast.error('Error cargando datos');
+    } finally {
+      setLoadingList(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshProjects();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleOpenDialog = (projectId?: string) => {
     if (projectId) {
-      const project = mockProjects.find(p => p.id === projectId);
+      const project = projects.find(p => p._id === projectId);
       if (project) {
+        const clienteIdValue = typeof (project as any).clienteId === 'object' ? (project as any).clienteId?._id : (project as any).clienteId;
         setFormData({
-          name: project.name,
-          type: project.type,
-          description: project.description,
+          nombre: project.nombre,
+          tipoProyecto: project.tipoProyecto?._id || '',
+          descripcion: project.descripcion || '',
+          clienteId: clienteIdValue || '',
         });
         setEditingProject(projectId);
       }
     } else {
-      setFormData({ name: '', type: '', description: '' });
+      setFormData({ nombre: '', tipoProyecto: '', descripcion: '', clienteId: '' });
       setEditingProject(null);
     }
     setIsDialogOpen(true);
@@ -48,42 +95,58 @@ export const ProjectsView: React.FC = () => {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingProject(null);
-    setFormData({ name: '', type: '', description: '' });
+    setFormData({ nombre: '', tipoProyecto: '', descripcion: '', clienteId: '' });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (editingProject) {
-      toast.success('Proyecto actualizado correctamente');
-    } else {
-      toast.success('Proyecto creado correctamente');
-    }
-    
-    handleCloseDialog();
-  };
-
-  const handleDelete = (projectId: string) => {
-    const projectClaims = mockClaims.filter(c => c.projectId === projectId);
-    
-    if (projectClaims.length > 0) {
-      toast.error('No se puede eliminar el proyecto porque tiene reclamos asociados');
+    if (!formData.clienteId) {
+      toast.error('Debe seleccionar un cliente');
       return;
     }
-    
-    toast.success('Proyecto eliminado correctamente');
+
+    try {
+      setLoading(true);
+      if (editingProject) {
+        // TODO: implementar update cuando se necesite
+        toast.success('Guardado (pendiente implementar actualización real)');
+      } else {
+        await proyectosApi.create({
+          nombre: formData.nombre,
+          descripcion: formData.descripcion,
+          tipoProyecto: formData.tipoProyecto || undefined,
+          clienteId: formData.clienteId,
+        });
+        toast.success('Proyecto creado correctamente');
+      }
+      await refreshProjects();
+      handleCloseDialog();
+    } catch (error) {
+      console.error(error);
+      toast.error(error instanceof Error ? error.message : 'Error al guardar el proyecto');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (projectId: string) => {
+    // TODO: implementar delete real (requiere endpoint y confirmación)
+    toast.error('Eliminar proyecto aún no está implementado');
   };
 
   const getProjectClaimsCount = (projectId: string) => {
-    return mockClaims.filter(c => c.projectId === projectId).length;
+    return claims.filter((c: any) => {
+      const pid = typeof c.proyectoId === 'object' ? c.proyectoId?._id : c.proyectoId;
+      return pid === projectId;
+    }).length;
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-gray-900 mb-1">Mis Proyectos</h2>
-          <p className="text-gray-600">Gestione sus proyectos y asocie reclamos</p>
+          <h2 className="text-gray-900 mb-1">Gestión de Proyectos</h2>
+          <p className="text-gray-600">Administre proyectos y asígnelos a clientes</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -103,29 +166,48 @@ export const ProjectsView: React.FC = () => {
                 <Label htmlFor="name">Nombre del Proyecto *</Label>
                 <Input
                   id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  value={formData.nombre}
+                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                   required
                   placeholder="Ej: Sistema de Ventas"
+                  disabled={loading}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="cliente">Cliente *</Label>
+                <Select
+                  value={formData.clienteId}
+                  onValueChange={(value) => setFormData({ ...formData, clienteId: value })}
+                  required
+                  disabled={loading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar cliente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientes.map(cliente => (
+                      <SelectItem key={cliente._id} value={cliente._id}>{cliente.empresa}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="type">Tipo de Proyecto *</Label>
                 <Select
-                  value={formData.type}
-                  onValueChange={(value) => setFormData({ ...formData, type: value as ProjectType })}
+                  value={formData.tipoProyecto}
+                  onValueChange={(value) => setFormData({ ...formData, tipoProyecto: value })}
                   required
+                  disabled={loading}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar tipo" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="software">Software</SelectItem>
-                    <SelectItem value="marketing">Marketing</SelectItem>
-                    <SelectItem value="consultoria">Consultoría</SelectItem>
-                    <SelectItem value="soporte">Soporte</SelectItem>
-                    <SelectItem value="otro">Otro</SelectItem>
+                    {tiposProyecto.map(tp => (
+                      <SelectItem key={tp._id} value={tp._id}>{tp.nombre}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -134,20 +216,21 @@ export const ProjectsView: React.FC = () => {
                 <Label htmlFor="description">Descripción *</Label>
                 <Textarea
                   id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  value={formData.descripcion}
+                  onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
                   required
                   placeholder="Describa el proyecto..."
                   rows={4}
+                  disabled={loading}
                 />
               </div>
 
               <div className="flex gap-2 justify-end">
-                <Button type="button" variant="outline" onClick={handleCloseDialog}>
+                <Button type="button" variant="outline" onClick={handleCloseDialog} disabled={loading}>
                   Cancelar
                 </Button>
-                <Button type="submit">
-                  {editingProject ? 'Guardar Cambios' : 'Crear Proyecto'}
+                <Button type="submit" disabled={loading}>
+                  {editingProject ? (loading ? 'Guardando...' : 'Guardar Cambios') : (loading ? 'Creando...' : 'Crear Proyecto')}
                 </Button>
               </div>
             </form>
@@ -155,7 +238,11 @@ export const ProjectsView: React.FC = () => {
         </Dialog>
       </div>
 
-      {userProjects.length === 0 ? (
+      {loadingList ? (
+        <Card>
+          <CardContent className="py-8 text-center">Cargando proyectos...</CardContent>
+        </Card>
+      ) : projects.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <div className="flex justify-center mb-4">
@@ -175,16 +262,16 @@ export const ProjectsView: React.FC = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {userProjects.map((project) => {
-            const claimsCount = getProjectClaimsCount(project.id);
+          {projects.map((project) => {
+            const claimsCount = getProjectClaimsCount(project._id);
             return (
-              <Card key={project.id}>
+              <Card key={project._id}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <CardTitle className="text-base">{project.name}</CardTitle>
+                      <CardTitle className="text-base">{project.nombre}</CardTitle>
                       <p className="text-sm text-gray-600 mt-1">
-                        {projectTypeLabels[project.type]}
+                        {project.tipoProyecto?.nombre || 'Sin tipo'}
                       </p>
                     </div>
                     <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -193,12 +280,18 @@ export const ProjectsView: React.FC = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="text-sm text-gray-700">{project.description}</p>
+                  <p className="text-sm text-gray-700">{project.descripcion}</p>
                   
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                      {claimsCount} reclamos
-                    </span>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <span className="font-medium">Cliente:</span>
+                      <span>{typeof (project as any).clienteId === 'object' ? (project as any).clienteId?.empresa : 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                        {claimsCount} reclamos
+                      </span>
+                    </div>
                   </div>
 
                   <div className="flex gap-2 pt-2">
@@ -206,7 +299,7 @@ export const ProjectsView: React.FC = () => {
                       variant="outline"
                       size="sm"
                       className="flex-1"
-                      onClick={() => handleOpenDialog(project.id)}
+                      onClick={() => handleOpenDialog(project._id)}
                     >
                       <Edit className="w-4 h-4 mr-1" />
                       Editar
@@ -215,7 +308,7 @@ export const ProjectsView: React.FC = () => {
                       variant="outline"
                       size="sm"
                       className="flex-1"
-                      onClick={() => handleDelete(project.id)}
+                      onClick={() => handleDelete(project._id)}
                       disabled={claimsCount > 0}
                     >
                       <Trash2 className="w-4 h-4 mr-1" />
@@ -224,8 +317,8 @@ export const ProjectsView: React.FC = () => {
                   </div>
 
                   {claimsCount > 0 && (
-                    <p className="text-xs text-gray-500">
-                      * No se puede eliminar porque tiene reclamos asociados
+                    <p className="text-xs text-orange-600 font-medium">
+                      No se puede eliminar porque tiene reclamos asociados
                     </p>
                   )}
                 </CardContent>
