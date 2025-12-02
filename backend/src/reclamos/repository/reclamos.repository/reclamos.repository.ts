@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { ClientSession, Model } from 'mongoose';
 import { Reclamo, ReclamoDocument } from '../../Entidad/reclamo.schema';
 
 @Injectable()
@@ -11,8 +11,8 @@ export class ReclamosRepository {
   ) {}
 
   // Crear reclamo
-  async create(data: any): Promise<ReclamoDocument> {
-    return this.reclamoModel.create(data);
+  async create(data: any, session?: ClientSession): Promise<ReclamoDocument> {
+    return this.reclamoModel.create([data], { session }).then(r => r[0]);
   }
 
   // Buscar por ID (sin new ObjectId para evitar el BSONError)
@@ -36,27 +36,32 @@ export class ReclamosRepository {
   }
 
   // Actualizar
-  async update(id: string, data: any): Promise<ReclamoDocument | null> {
+  async update(
+    id: string,
+    data: any,
+    session?: ClientSession,
+  ): Promise<ReclamoDocument | null> {
     return this.reclamoModel
-      .findByIdAndUpdate(id, data, { new: true })
+      .findByIdAndUpdate(id, data, { new: true, session })
       .exec();
   }
 
   // Eliminar
-  async delete(id: string): Promise<ReclamoDocument | null> {
-    return this.reclamoModel.findByIdAndDelete(id).exec();
+  async delete(id: string, session?: ClientSession): Promise<ReclamoDocument | null> {
+    return this.reclamoModel.findByIdAndDelete(id, { session }).exec();
   }
 
   // Agregar registro al historial
   async pushHistorial(
     reclamoId: string,
     historialId: string,
+    session?: ClientSession,
   ): Promise<ReclamoDocument | null> {
     return this.reclamoModel
       .findByIdAndUpdate(
         reclamoId,
         { $push: { historialIds: historialId } },
-        { new: true },
+        { new: true, session },
       )
       .exec();
   }
@@ -65,12 +70,13 @@ export class ReclamosRepository {
   async updateEstado(
     reclamoId: string,
     estadoId: string,
+    session?: ClientSession,
   ): Promise<ReclamoDocument | null> {
     return this.reclamoModel
       .findByIdAndUpdate(
         reclamoId,
         { estadoActual: estadoId },
-        { new: true },
+        { new: true, session },
       )
       .exec();
   }
@@ -79,29 +85,14 @@ export class ReclamosRepository {
   async asignarEmpleado(
     reclamoId: string,
     empleadoId: string,
+    session?: ClientSession,
   ): Promise<ReclamoDocument | null> {
     return this.reclamoModel
       .findByIdAndUpdate(
         reclamoId,
         { asignadoActual: empleadoId },
-        { new: true },
+        { new: true, session },
       )
-      .exec();
-  }
-
-  // Cambiar área y subárea
-  async cambiarArea(
-    reclamoId: string,
-    areaId: string,
-    subareaId?: string,
-  ): Promise<ReclamoDocument | null> {
-    const updateData: any = {
-      area: areaId,
-      subarea: subareaId ?? null,
-    };
-
-    return this.reclamoModel
-      .findByIdAndUpdate(reclamoId, updateData, { new: true })
       .exec();
   }
 

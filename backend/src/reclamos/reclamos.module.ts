@@ -15,6 +15,8 @@ import { HistorialReclamoModule } from '../historial-reclamo/historial-reclamo.m
 import { EstadoReclamoModule } from '../estado-reclamo/estado-reclamo.module';
 import { ResumenResolucionModule } from '../resumen-resolucion/resumen-resolucion.module';
 import { ClientesModule } from '../clientes/clientes.module';
+import { UnitOfWork } from '../common/database/unit-of-work';
+
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -31,6 +33,7 @@ import { ClientesModule } from '../clientes/clientes.module';
     forwardRef(() => HistorialReclamoModule),
     forwardRef(() => EstadoReclamoModule),
     forwardRef(() => ResumenResolucionModule),
+    UnitOfWork,
   ],
   controllers: [ReclamosController],
   providers: [ReclamosService, ReclamosRepository],

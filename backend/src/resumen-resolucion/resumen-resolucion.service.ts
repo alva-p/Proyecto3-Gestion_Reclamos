@@ -1,8 +1,5 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { ClientSession } from 'mongoose';
 import { ResumenResolucionRepository } from './repository/resumen-resolucion.repository/resumen-resolucion.repository';
 import { ReclamosRepository } from '../reclamos/repository/reclamos.repository/reclamos.repository';
 import { CrearResumenResolucionDto } from './dto/create-resumen-resolucion.dto/create-resumen-resolucion.dto';
@@ -14,24 +11,37 @@ export class ResumenResolucionService {
     private readonly reclamosRepo: ReclamosRepository,
   ) {}
 
-  async crearResumen(dto: CrearResumenResolucionDto, reclamoId: string) {
+  // 🔹 Ahora acepta opcionalmente `session`
+  async crearResumen(
+    dto: CrearResumenResolucionDto,
+    reclamoId: string,
+    session?: ClientSession,
+  ) {
     const reclamo = await this.reclamosRepo.findById(reclamoId);
     if (!reclamo) {
       throw new NotFoundException('El reclamo no existe.');
     }
-    const resumen = await this.resumenRepo.create({
+
+    const resumen = await this.resumenRepo.create(
+      {
+        reclamoId,
+        descripcion: dto.descripcion,
+        responsable: dto.responsableId,
+        fechaHora: new Date(),
+      },
+      session,
+    );
+
+    await this.reclamosRepo.update(
       reclamoId,
-      descripcion: dto.descripcion,
-      responsable: dto.responsableId,
-      fechaHora: new Date(),
-    });
-    await this.reclamosRepo.update(reclamoId, {
-      resumenResolucionId: resumen._id,
-    });
+      {
+        resumenResolucionId: resumen._id,
+      },
+      session,
+    );
 
     return resumen;
   }
-
 
   async findByReclamo(reclamoId: string) {
     const reclamo = await this.reclamosRepo.findById(reclamoId);
@@ -43,6 +53,7 @@ export class ResumenResolucionService {
     }
     return this.resumenRepo.findById(reclamo.resumenResolucionId);
   }
+
   async findAll(filters: any) {
     return this.resumenRepo.findAll(filters);
   }

@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-
+import { ClientSession, Model } from 'mongoose';
 import {
   ResumenResolucion,
   ResumenResolucionDocument,
@@ -14,30 +13,37 @@ export class ResumenResolucionRepository {
     private readonly resumenModel: Model<ResumenResolucionDocument>,
   ) {}
 
-  async create(data: any): Promise<ResumenResolucionDocument> {
-    return this.resumenModel.create(data);
+  // Crear resumen (soporta transacción)
+  async create(
+    data: any,
+    session?: ClientSession,
+  ): Promise<ResumenResolucionDocument> {
+    const doc = new this.resumenModel(data);
+    return doc.save(session ? { session } : undefined);
+  }
+
+  async findAll(filters: any = {}): Promise<ResumenResolucionDocument[]> {
+    return this.resumenModel.find(filters).exec();
   }
 
   async findById(id: string): Promise<ResumenResolucionDocument | null> {
-    return this.resumenModel
-      .findById(new Types.ObjectId(id))
-      .populate('responsable')
-      .exec();
+    return this.resumenModel.findById(id).exec();
   }
-  async findAll(filters: any = {}): Promise<ResumenResolucionDocument[]> {
+
+  async update(
+    id: string,
+    data: any,
+    session?: ClientSession,
+  ): Promise<ResumenResolucionDocument | null> {
     return this.resumenModel
-      .find(filters)
-      .populate('responsable')
+      .findByIdAndUpdate(id, data, { new: true, session })
       .exec();
   }
 
-  async update(id: string, data: any,): Promise<ResumenResolucionDocument | null> {
-    return this.resumenModel
-      .findByIdAndUpdate(id, data, { new: true })
-      .exec();
-  }
-
-  async delete(id: string): Promise<ResumenResolucionDocument | null> {
-    return this.resumenModel.findByIdAndDelete(id).exec();
+  async delete(
+    id: string,
+    session?: ClientSession,
+  ): Promise<ResumenResolucionDocument | null> {
+    return this.resumenModel.findByIdAndDelete(id, { session }).exec();
   }
 }

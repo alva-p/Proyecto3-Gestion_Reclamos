@@ -28,7 +28,7 @@ import { ClientesService } from '../clientes/clientes.service';
 
 @Controller('reclamos')
 // Cuando quieras volver a activar seguridad, descomentá esto:
-// @UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class ReclamosController {
   constructor(
     private readonly reclamosService: ReclamosService,
