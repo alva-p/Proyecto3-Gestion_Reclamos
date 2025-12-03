@@ -7,7 +7,7 @@ import {
   Body,
   Query,
   BadRequestException,
-  UseGuards,
+  // UseGuards,  // ← lo dejamos importado si lo querés después, pero no es obligatorio ahora
 } from '@nestjs/common';
 import { ReclamosService } from './reclamos.service';
 
@@ -29,7 +29,7 @@ import { ProyectosService } from '../proyectos/proyectos.service';
 
 @Controller('reclamos')
 // Cuando quieras volver a activar seguridad, descomentá esto:
-@UseGuards(JwtAuthGuard, RolesGuard)
+// @UseGuards(JwtAuthGuard, RolesGuard)
 export class ReclamosController {
   constructor(
     private readonly reclamosService: ReclamosService,
@@ -39,8 +39,10 @@ export class ReclamosController {
 
   // 1 - Crear reclamo (cliente)
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('CLIENTE')
+  // Para la demo rápida dejamos este endpoint también sin guard.
+  // Cuando quieras seguridad real:
+  // @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Roles('CLIENTE')
   async createReclamo(
     @Body() createReclamoDto: CreateReclamoDto,
     @CurrentUser() user: any,
@@ -49,7 +51,6 @@ export class ReclamosController {
       throw new BadRequestException('Usuario no autenticado');
     }
 
-    // Derivar clienteId desde el proyecto para evitar depender de la asociación usuario-cliente
     const proyecto = await this.proyectosService.findById(createReclamoDto.proyectoId);
     if (!proyecto) {
       throw new BadRequestException('Proyecto no encontrado');
@@ -59,7 +60,6 @@ export class ReclamosController {
       throw new BadRequestException('El proyecto no tiene un cliente asociado');
     }
 
-    // Si clienteId está populado (es un objeto), extraer el _id
     const clienteId = typeof proyecto.clienteId === 'object' && proyecto.clienteId !== null
       ? ((proyecto.clienteId as any)._id?.toString() ?? (proyecto.clienteId as any).toString())
       : (proyecto.clienteId as any).toString();
@@ -71,6 +71,7 @@ export class ReclamosController {
   // ⚠ Importante: esta ruta debe ir ANTES de @Get(':id') para evitar conflictos
   @Get('estadisticas-empleado')
   // Cuando vuelvas a activar seguridad:
+  // @UseGuards(JwtAuthGuard, RolesGuard)
   // @Roles('EMPLEADO', 'ADMIN')
   getEstadisticasEmpleado(
     @Query('empleadoId') empleadoId: string,
@@ -87,6 +88,7 @@ export class ReclamosController {
   // 3 - Estadísticas por cliente
   @Get('estadisticas-cliente')
   // Cuando vuelvas a activar seguridad:
+  // @UseGuards(JwtAuthGuard, RolesGuard)
   // @Roles('CLIENTE')
   getEstadisticasCliente(
     @Query('clienteId') clienteId: string,
@@ -103,6 +105,7 @@ export class ReclamosController {
   // 4 - Estadísticas ADMIN (dashboard general)
   @Get('estadisticas-admin')
   // Cuando vuelvas a activar seguridad:
+  // @UseGuards(JwtAuthGuard, RolesGuard)
   // @Roles('ADMIN')
   getEstadisticasAdmin(
     @Query('fechaInicio') fechaInicio?: string,
@@ -122,7 +125,8 @@ export class ReclamosController {
 
   // 🔹 Endpoint de prueba para ver el usuario logueado
   @Get('me-test')
-  @Roles('CLIENTE') // opcional, pero útil para probar RolesGuard
+  // @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Roles('CLIENTE')
   meTest(@CurrentUser() user: any) {
     console.log('USER EN me-test =>', user);
     return { user };
