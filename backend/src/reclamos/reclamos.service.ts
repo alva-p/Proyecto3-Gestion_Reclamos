@@ -82,34 +82,35 @@ export class ReclamosService {
         throw new NotFoundException('Criticidad inválida.');
       }
 
-    const estadoInicial = await this.estadoReclamoService.findByNombre('Enviado');
-    if (!estadoInicial) {
-      throw new NotFoundException('No se encontró el estado inicial "Enviado".');
-    }
+      const estadoInicial = await this.estadoReclamoService.findByNombre('Enviado');
+      if (!estadoInicial) {
+        throw new NotFoundException('No se encontró el estado inicial "Enviado".');
+      }
 
-        // Generar numeroReclamo único (simple contador incremental)
-        const totalReclamos = await this.reclamosRepository.countAll();
-        const numeroReclamo = `REC-${String(totalReclamos + 1).padStart(6, '0')}`;
-        // 1) Crear reclamo
-        const reclamo = await this.reclamosRepository.create(
-          {
-            numeroReclamo,
-            titulo,
-            descripcion,
-            tipoReclamo,
-            prioridad,
-            criticidad,
-            area: null,
-            subarea: null,
-            estadoActual: estadoInicial._id,
-            asignadoActual: null,
-            historialIds: [],
-            resumenResolucionId: null,
-            proyectoId,
-            clienteId,
-          },
-          session,
-        );
+      // Generar numeroReclamo único (simple contador incremental)
+      const totalReclamos = await this.reclamosRepository.countAll();
+      const numeroReclamo = `REC-${String(totalReclamos + 1).padStart(6, '0')}`;
+
+      // 1) Crear reclamo
+      const reclamo = await this.reclamosRepository.create(
+        {
+          numeroReclamo,
+          titulo,
+          descripcion,
+          tipoReclamo,
+          prioridad,
+          criticidad,
+          area: null,
+          subarea: null,
+          estadoActual: estadoInicial._id,
+          asignadoActual: null,
+          historialIds: [],
+          resumenResolucionId: null,
+          proyectoId,
+          clienteId,
+        },
+        session,
+      );
 
       // 2) Crear historial inicial
       const historial = await this.historialReclamoService.create(
@@ -144,14 +145,14 @@ export class ReclamosService {
     if (filters.area) query.area = filters.area;
     if (filters.clienteId) query.clienteId = filters.clienteId;
     if (filters.proyectoId) query.proyectoId = filters.proyectoId;
-    
+
     // Convertir asignadoActual a ObjectId si es un string válido
     if (filters.asignadoActual) {
-        if (Types.ObjectId.isValid(filters.asignadoActual)) {
-            query.asignadoActual = new Types.ObjectId(filters.asignadoActual);
-        } else {
-            query.asignadoActual = filters.asignadoActual;
-        }
+      if (Types.ObjectId.isValid(filters.asignadoActual)) {
+        query.asignadoActual = new Types.ObjectId(filters.asignadoActual);
+      } else {
+        query.asignadoActual = filters.asignadoActual;
+      }
     }
 
     return this.reclamosRepository.findAll(query);
@@ -183,9 +184,9 @@ export class ReclamosService {
         await this.estadoReclamoService.findById(nuevoEstadoId);
       if (!nuevoEstado) throw new NotFoundException('Estado inválido.');
 
-    const estadoActual = await this.estadoReclamoService.findById(
-      reclamo.estadoActual as any,
-    );
+      const estadoActual = await this.estadoReclamoService.findById(
+        reclamo.estadoActual as any,
+      );
 
       if (estadoActual.nombre === 'Cerrado' || estadoActual.nombre === 'Cancelado') {
         throw new ConflictException('El reclamo no permite modificaciones en estado actual.');
@@ -330,7 +331,6 @@ export class ReclamosService {
           estadoReclamo: estadoCerrado._id,
           area: reclamo.area,
           subarea: reclamo.subarea,
-          // si querés, podrías incluir resumen._id en el historial
         },
         session,
       );
@@ -350,12 +350,27 @@ export class ReclamosService {
       throw new BadRequestException('empleadoId es requerido.');
     }
 
-    const filters: any = {
-      asignadoActual: empleadoId,
-    };
+    const empleadoIdStr = String(empleadoId);
 
-    let reclamos = await this.reclamosRepository.findAll(filters);
+    // 1) Traemos todos los reclamos y filtramos en memoria por asignadoActual
+    let reclamos = await this.reclamosRepository.findAll({});
 
+    reclamos = reclamos.filter((r: any) => {
+      const asignado = r.asignadoActual;
+      if (!asignado) return false;
+
+      // Soporta ObjectId, string u objeto populado
+      if (typeof asignado === 'object') {
+        if (asignado._id) {
+          return String(asignado._id) === empleadoIdStr;
+        }
+        return String(asignado) === empleadoIdStr;
+      }
+
+      return String(asignado) === empleadoIdStr;
+    });
+
+    // 2) Filtro de fechas (opcional)
     let desde: Date | undefined;
     let hasta: Date | undefined;
 
@@ -370,33 +385,37 @@ export class ReclamosService {
 
     if (desde || hasta) {
       reclamos = reclamos.filter((r: any) => {
-        const fecha =
-          r.createdAt || r.fechaCreacion || r.fecha || null;
-
+        const fecha = r.createdAt || r.fechaCreacion || r.fecha;
         if (!fecha) return false;
-        const f = new Date(fecha);
 
+        const f = new Date(fecha);
         if (desde && f < desde) return false;
         if (hasta && f > hasta) return false;
         return true;
       });
     }
 
+    // 3) Cálculo de estadísticas
     const total = reclamos.length;
 
     const porEstadoMap = new Map<string, number>();
     const porMesMap = new Map<string, number>();
 
     for (const r of reclamos as any[]) {
-      const estadoKey = String(r.estadoActual);
+      // Estado: usamos nombre si está populado
+      const estado = r.estadoActual;
+      const estadoKey =
+        estado && typeof estado === 'object'
+          ? String(estado.nombre ?? estado._id ?? estado)
+          : String(estado ?? 'SIN_ESTADO');
+
       porEstadoMap.set(estadoKey, (porEstadoMap.get(estadoKey) ?? 0) + 1);
 
-      const fecha = r.createdAt || r.fechaCreacion || r.fecha || new Date();
-      const d = new Date(fecha);
-      const key = `${d.getFullYear()}-${String(
-        d.getMonth() + 1,
-      ).padStart(2, '0')}`;
-      porMesMap.set(key, (porMesMap.get(key) ?? 0) + 1);
+      // Mes (YYYY-MM)
+      const fechaBase = r.createdAt || r.fechaCreacion || r.fecha || new Date();
+      const d = new Date(fechaBase);
+      const mesKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      porMesMap.set(mesKey, (porMesMap.get(mesKey) ?? 0) + 1);
     }
 
     const porEstado = Array.from(porEstadoMap.entries()).map(
@@ -426,12 +445,22 @@ export class ReclamosService {
       throw new BadRequestException('clienteId es requerido.');
     }
 
-    const filters: any = {
-      clienteId,
-    };
+    const clienteIdStr = String(clienteId);
+    let reclamos = await this.reclamosRepository.findAll({});
 
-    let reclamos = await this.reclamosRepository.findAll(filters);
+    // Filtramos por cliente (clienteId o cliente populado)
+    reclamos = reclamos.filter((r: any) => {
+      const rawCliente = r.clienteId ?? r.cliente ?? null;
+      if (!rawCliente) return false;
 
+      if (typeof rawCliente === 'object') {
+        return String(rawCliente._id ?? rawCliente.id ?? rawCliente) === clienteIdStr;
+      }
+
+      return String(rawCliente) === clienteIdStr;
+    });
+
+    // Filtro de fechas
     let desde: Date | undefined;
     let hasta: Date | undefined;
 
@@ -446,12 +475,10 @@ export class ReclamosService {
 
     if (desde || hasta) {
       reclamos = reclamos.filter((r: any) => {
-        const fecha =
-          r.createdAt || r.fechaCreacion || r.fecha || null;
-
+        const fecha = r.createdAt || r.fechaCreacion || r.fecha;
         if (!fecha) return false;
-        const f = new Date(fecha);
 
+        const f = new Date(fecha);
         if (desde && f < desde) return false;
         if (hasta && f > hasta) return false;
         return true;
@@ -464,15 +491,17 @@ export class ReclamosService {
     const porMesMap = new Map<string, number>();
 
     for (const r of reclamos as any[]) {
-      const estadoKey = String(r.estadoActual);
+      const estado = r.estadoActual;
+      const estadoKey =
+        estado && typeof estado === 'object'
+          ? String(estado.nombre ?? estado._id ?? estado)
+          : String(estado ?? 'SIN_ESTADO');
       porEstadoMap.set(estadoKey, (porEstadoMap.get(estadoKey) ?? 0) + 1);
 
-      const fecha = r.createdAt || r.fechaCreacion || r.fecha || new Date();
-      const d = new Date(fecha);
-      const key = `${d.getFullYear()}-${String(
-        d.getMonth() + 1,
-      ).padStart(2, '0')}`;
-      porMesMap.set(key, (porMesMap.get(key) ?? 0) + 1);
+      const fechaBase = r.createdAt || r.fechaCreacion || r.fecha || new Date();
+      const d = new Date(fechaBase);
+      const mesKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      porMesMap.set(mesKey, (porMesMap.get(mesKey) ?? 0) + 1);
     }
 
     const porEstado = Array.from(porEstadoMap.entries()).map(

@@ -1,4 +1,3 @@
-// src/components/ClientStatsPanel.tsx
 import React from 'react';
 import {
   BarChart,
@@ -14,6 +13,8 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { getAuthToken } from '../services/api';
+import { statusLabels } from '../utils/translations';
+
 interface EstadoData {
   _id: string;
   cantidad: number;
@@ -81,7 +82,9 @@ export const ClientStatsPanel: React.FC<Props> = ({ clienteId }) => {
         console.log('Llamando a estadísticas cliente:', url);
 
         const token = getAuthToken();
-        const headers: HeadersInit = {};
+        const headers: HeadersInit = {
+          'Content-Type': 'application/json',
+        };
         if (token) {
           headers['Authorization'] = `Bearer ${token}`;
         }
@@ -98,10 +101,16 @@ export const ClientStatsPanel: React.FC<Props> = ({ clienteId }) => {
           throw new Error(`Error HTTP ${res.status}: ${raw}`);
         }
 
-        const data = JSON.parse(raw) as Stats;
+        const data = JSON.parse(raw) as Partial<Stats>;
         console.log('Datos de estadísticas cliente parseados:', data);
 
-        setStats(data);
+        const normalized: Stats = {
+          total: data.total ?? 0,
+          porEstado: data.porEstado ?? [],
+          porMes: data.porMes ?? [],
+        };
+
+        setStats(normalized);
       } catch (err: any) {
         console.error('Error al cargar estadísticas del cliente:', err);
         setError('No se pudieron cargar las estadísticas del cliente.');
@@ -119,6 +128,9 @@ export const ClientStatsPanel: React.FC<Props> = ({ clienteId }) => {
     };
   }, [clienteId, fechaInicio, fechaFin]);
 
+  if (!clienteId) {
+    return <div>No se encontró cliente asociado para mostrar estadísticas.</div>;
+  }
 
   if (loading && !stats) return <div>Cargando estadísticas...</div>;
   if (error) return <div>{error}</div>;
@@ -130,13 +142,13 @@ export const ClientStatsPanel: React.FC<Props> = ({ clienteId }) => {
 
   const claimsByStatus =
     porEstado.map(e => ({
-      name: String(e._id),
+      name: statusLabels[e._id] || String(e._id),
       value: e.cantidad,
     })) ?? [];
 
   const claimsByMonth =
     porMes.map(m => ({
-      month: m._id, // luego lo formateamos en el eje o en la lista
+      month: m._id, // "YYYY-MM"
       reclamos: m.cantidad,
     })) ?? [];
 
@@ -205,7 +217,10 @@ export const ClientStatsPanel: React.FC<Props> = ({ clienteId }) => {
                   dataKey="value"
                 >
                   {claimsByStatus.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -229,9 +244,6 @@ export const ClientStatsPanel: React.FC<Props> = ({ clienteId }) => {
                 <XAxis
                   dataKey="month"
                   tickFormatter={formatMesLabel}
-                  // si querés rotar labels:
-                  // angle={-30}
-                  // textAnchor="end"
                 />
                 <YAxis />
                 <Tooltip
@@ -245,7 +257,7 @@ export const ClientStatsPanel: React.FC<Props> = ({ clienteId }) => {
         </div>
       </div>
 
-      {/* Resumen textual (opcional, ayuda a entender los datos) */}
+      {/* Resumen textual */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
         <div>
           <h4 className="font-semibold mb-1">Detalle por estado</h4>
@@ -257,7 +269,7 @@ export const ClientStatsPanel: React.FC<Props> = ({ clienteId }) => {
             <ul className="text-sm">
               {porEstado.map(e => (
                 <li key={String(e._id)}>
-                  <b>{String(e._id)}:</b> {e.cantidad}
+                  <b>{statusLabels[e._id] || String(e._id)}:</b> {e.cantidad}
                 </li>
               ))}
             </ul>

@@ -41,7 +41,7 @@ export class ReclamosController {
   @Post()
   // Cuando quieras seguridad real:
   // @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles('CLIENTE')
+  @Roles('CLIENTE')
   async createReclamo(
     @Body() createReclamoDto: CreateReclamoDto,
   ) {
@@ -73,7 +73,7 @@ export class ReclamosController {
   @Get('estadisticas-empleado')
   // Cuando vuelvas a activar seguridad:
   // @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles('EMPLEADO', 'ADMIN')
+  @Roles('EMPLEADO', 'ADMIN')
   getEstadisticasEmpleado(
     @Query('empleadoId') empleadoId: string,
     @Query('fechaInicio') fechaInicio?: string,
@@ -90,7 +90,7 @@ export class ReclamosController {
   @Get('estadisticas-cliente')
   // Cuando vuelvas a activar seguridad:
   // @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles('CLIENTE')
+  @Roles('CLIENTE')
   getEstadisticasCliente(
     @Query('clienteId') clienteId: string,
     @Query('fechaInicio') fechaInicio?: string,

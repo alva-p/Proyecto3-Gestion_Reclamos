@@ -1,20 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import {
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
+import { Pie, Bar, Line } from 'react-chartjs-2';
+import Chart from 'chart.js/auto';
 import { FileText, Users, TrendingUp, Clock } from 'lucide-react';
 import { statusLabels, typeLabels } from '../utils/translations';
 
@@ -39,13 +26,24 @@ export const AdminDashboard: React.FC = () => {
         const url = `/backend/reclamos/estadisticas-admin${query}`;
         console.log('Llamando a estadísticas admin:', url);
 
+        const token = localStorage.getItem('access_token');
+
         const res = await fetch(url, {
           method: 'GET',
-          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
         });
 
         const raw = await res.text();
         console.log('Respuesta cruda estadísticas admin:', raw);
+
+        if (res.status === 401) {
+          setError('No autorizado. Iniciá sesión nuevamente como administrador.');
+          setStats(null);
+          return;
+        }
 
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}: ${raw}`);
@@ -100,9 +98,61 @@ export const AdminDashboard: React.FC = () => {
 
   const claimsByMonth =
     stats.porMes?.map((m: any) => ({
-      month: m._id, // "YYYY-MM"
+      month: m._id, // puede ser 1–12 o "2025-02"
       reclamos: m.cantidad,
     })) || [];
+
+  const avgResolution =
+    (stats.avgResolutionTime ?? stats.tiempoPromedio ?? 0) as number;
+
+  // =======================
+  // DATA PARA CHART.JS
+  // =======================
+
+  const pieStatusData = {
+    labels: claimsByStatus.map((c: any) => c.name),
+    datasets: [
+      {
+        data: claimsByStatus.map((c: any) => c.value),
+        backgroundColor: COLORS,
+      },
+    ],
+  };
+
+  const pieTypeData = {
+    labels: claimsByType.map((t: any) => t.name),
+    datasets: [
+      {
+        data: claimsByType.map((t: any) => t.value),
+        backgroundColor: COLORS,
+      },
+    ],
+  };
+
+  const barAreaData = {
+    labels: claimsByArea.map((a: any) => a.area),
+    datasets: [
+      {
+        label: 'Reclamos por área',
+        data: claimsByArea.map((a: any) => a.reclamos),
+        backgroundColor: 'rgba(139, 92, 246, 0.6)',
+      },
+    ],
+  };
+
+  const lineMonthData = {
+    labels: claimsByMonth.map((m: any) => m.month),
+    datasets: [
+      {
+        label: 'Reclamos por mes',
+        data: claimsByMonth.map((m: any) => m.reclamos),
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+        fill: true,
+        tension: 0.4,
+      },
+    ],
+  };
 
   return (
     <div className="space-y-6">
@@ -184,7 +234,7 @@ export const AdminDashboard: React.FC = () => {
                   Tiempo Prom. Resolución
                 </p>
                 <p className="text-gray-900 mt-1">
-                  {(stats.avgResolutionTime ?? 0).toFixed(1)} días
+                  {avgResolution.toFixed(1)} días
                 </p>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -202,30 +252,9 @@ export const AdminDashboard: React.FC = () => {
             <CardTitle>Reclamos por Estado</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={claimsByStatus}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) =>
-                    `${name} ${(percent * 100).toFixed(0)}%`
-                  }
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {claimsByStatus.map((entry: any, index: number) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            <div style={{ width: '100%', height: 300 }}>
+              <Pie data={pieStatusData} />
+            </div>
           </CardContent>
         </Card>
 
@@ -234,30 +263,9 @@ export const AdminDashboard: React.FC = () => {
             <CardTitle>Reclamos por Tipo</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={claimsByType}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) =>
-                    `${name} ${(percent * 100).toFixed(0)}%`
-                  }
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {claimsByType.map((entry: any, index: number) => (
-                    <Cell
-                      key={`cell-type-${index}`}
-                      fill={COLORS[index % COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            <div style={{ width: '100%', height: 300 }}>
+              <Pie data={pieTypeData} />
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -269,16 +277,9 @@ export const AdminDashboard: React.FC = () => {
             <CardTitle>Reclamos por Área</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={claimsByArea}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="area" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="reclamos" fill="#8b5cf6" />
-              </BarChart>
-            </ResponsiveContainer>
+            <div style={{ width: '100%', height: 300 }}>
+              <Bar data={barAreaData} />
+            </div>
           </CardContent>
         </Card>
 
@@ -287,21 +288,9 @@ export const AdminDashboard: React.FC = () => {
             <CardTitle>Reclamos por Mes</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={claimsByMonth}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="reclamos"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <div style={{ width: '100%', height: 300 }}>
+              <Line data={lineMonthData} />
+            </div>
           </CardContent>
         </Card>
       </div>
