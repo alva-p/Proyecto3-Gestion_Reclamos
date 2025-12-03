@@ -93,6 +93,7 @@ export class ReclamosService {
         // 1) Crear reclamo
         const reclamo = await this.reclamosRepository.create(
           {
+            numeroReclamo,
             titulo,
             descripcion,
             tipoReclamo,
@@ -136,7 +137,6 @@ export class ReclamosService {
     });
   }
 
-  // ========================= CRUD BÁSICO =========================
   async findAll(filters: any) {
     const query: any = {};
 

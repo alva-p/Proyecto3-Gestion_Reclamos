@@ -7,7 +7,7 @@ import {
   Body,
   Query,
   BadRequestException,
-  // UseGuards,  // ← lo dejamos importado si lo querés después, pero no es obligatorio ahora
+  // UseGuards,
 } from '@nestjs/common';
 import { ReclamosService } from './reclamos.service';
 
@@ -28,7 +28,7 @@ import { ClientesService } from '../clientes/clientes.service';
 import { ProyectosService } from '../proyectos/proyectos.service';
 
 @Controller('reclamos')
-// Cuando quieras volver a activar seguridad, descomentá esto:
+// Cuando quieras volver a activar seguridad a nivel controller:
 // @UseGuards(JwtAuthGuard, RolesGuard)
 export class ReclamosController {
   constructor(
@@ -39,31 +39,32 @@ export class ReclamosController {
 
   // 1 - Crear reclamo (cliente)
   @Post()
-  // Para la demo rápida dejamos este endpoint también sin guard.
   // Cuando quieras seguridad real:
   // @UseGuards(JwtAuthGuard, RolesGuard)
   // @Roles('CLIENTE')
   async createReclamo(
     @Body() createReclamoDto: CreateReclamoDto,
-    @CurrentUser() user: any,
   ) {
-    if (!user) {
-      throw new BadRequestException('Usuario no autenticado');
-    }
-
-    const proyecto = await this.proyectosService.findById(createReclamoDto.proyectoId);
+    // Ahora NO dependemos de @CurrentUser; el cliente se deriva del proyecto
+    const proyecto = await this.proyectosService.findById(
+      createReclamoDto.proyectoId,
+    );
     if (!proyecto) {
       throw new BadRequestException('Proyecto no encontrado');
     }
 
     if (!proyecto.clienteId) {
-      throw new BadRequestException('El proyecto no tiene un cliente asociado');
+      throw new BadRequestException(
+        'El proyecto no tiene un cliente asociado',
+      );
     }
 
-    const clienteId = typeof proyecto.clienteId === 'object' && proyecto.clienteId !== null
-      ? ((proyecto.clienteId as any)._id?.toString() ?? (proyecto.clienteId as any).toString())
-      : (proyecto.clienteId as any).toString();
-    
+    const clienteId =
+      typeof proyecto.clienteId === 'object' && proyecto.clienteId !== null
+        ? ((proyecto.clienteId as any)._id?.toString() ??
+           (proyecto.clienteId as any).toString())
+        : (proyecto.clienteId as any).toString();
+
     return this.reclamosService.createReclamo(clienteId, createReclamoDto);
   }
 
