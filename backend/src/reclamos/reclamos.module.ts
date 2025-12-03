@@ -33,10 +33,9 @@ import { UnitOfWork } from '../common/database/unit-of-work';
     forwardRef(() => HistorialReclamoModule),
     forwardRef(() => EstadoReclamoModule),
     forwardRef(() => ResumenResolucionModule),
-    UnitOfWork,
   ],
   controllers: [ReclamosController],
-  providers: [ReclamosService, ReclamosRepository],
+  providers: [ReclamosService, ReclamosRepository,UnitOfWork,],
   exports: [ReclamosService, ReclamosRepository],
 })
 export class ReclamosModule {}

@@ -12,14 +12,13 @@ export class UnitOfWork {
     work: (session: ClientSession) => Promise<T>,
   ): Promise<T> {
     const session = await this.connection.startSession();
-    session.startTransaction();
 
     try {
+      // 👇 Ejecutamos el trabajo usando la sesión, pero SIN startTransaction()
       const result = await work(session);
-      await session.commitTransaction();
       return result;
     } catch (error) {
-      await session.abortTransaction();
+      // ya no hay abortTransaction porque no hay transacción
       throw error;
     } finally {
       session.endSession();

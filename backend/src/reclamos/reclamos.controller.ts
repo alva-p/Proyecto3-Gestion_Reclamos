@@ -114,6 +114,14 @@ export class ReclamosController {
     return this.reclamosService.findAll(filters);
   }
 
+  // 🔹 Endpoint de prueba para ver el usuario logueado
+  @Get('me-test')
+  @Roles('CLIENTE') // opcional, pero útil para probar RolesGuard
+  meTest(@CurrentUser() user: any) {
+    console.log('USER EN me-test =>', user);
+    return { user };
+  }
+
   // 6 - Buscar por ID
   @Get(':id')
   async findById(@Param('id') id: string, @CurrentUser() user: any) {
