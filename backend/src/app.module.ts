@@ -24,11 +24,24 @@ import { EstadoSolicitudModule } from './estado-solicitud/estado-solicitud.modul
 import { ResumenResolucionModule } from './resumen-resolucion/resumen-resolucion.module';
 import { ComentariosInternosModule } from './comentarios-internos/comentarios-internos.module';
 import { HealthController } from './health/health.controller';
-import { EstadoReclamoService } from './estado-reclamo/estado-reclamo.service'; // Asegúrate de tener esta importación
 
 import { RolesService } from './roles/roles.service';
 import { EstadoSolicitudService } from './estado-solicitud/estado-solicitud.service';
 import { UsuariosService } from './usuarios/usuarios.service';
+import { EstadoReclamoService } from './estado-reclamo/estado-reclamo.service';
+import { AreasService } from './areas/areas.service';
+import { SubareasService } from './subareas/subareas.service';
+import { PrioridadService } from './prioridad/prioridad.service';
+import { CriticidadService } from './criticidad/criticidad.service';
+import { TipoReclamoService } from './tipo-reclamo/tipo-reclamo.service';
+import { ClientesService } from './clientes/clientes.service';
+import { ProyectosService } from './proyectos/proyectos.service';
+import { TipoProyectoService } from './tipo-proyecto/tipo-proyecto.service';
+import { EmpleadosService } from './empleados/empleados.service';
+import { ReclamosService } from './reclamos/reclamos.service';
+import { InjectConnection } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
+
 import { seedInitialData } from './seed/seed-initial-data';
 
 @Module({
@@ -59,13 +72,23 @@ import { seedInitialData } from './seed/seed-initial-data';
   providers: [AppService],
 })
 export class AppModule implements OnModuleInit {
-  // Nest te inyecta los servicios aquí
   constructor(
     private readonly rolesService: RolesService,
     private readonly estadoSolicitudService: EstadoSolicitudService,
     private readonly usuariosService: UsuariosService,
     private readonly estadoReclamoService: EstadoReclamoService,
+    private readonly areasService: AreasService,
+    private readonly subareasService: SubareasService,
+    private readonly prioridadService: PrioridadService,
+    private readonly criticidadService: CriticidadService,
+    private readonly tipoReclamoService: TipoReclamoService,
+    private readonly clientesService: ClientesService,
+    private readonly empleadosService: EmpleadosService, 
+    private readonly proyectosService: ProyectosService,
+    private readonly reclamosService: ReclamosService,
+    @InjectConnection() private readonly connection: Connection, // 👈 IMPORTANTE
   ) {}
+
 
   async onModuleInit() {
     await seedInitialData(
@@ -73,6 +96,17 @@ export class AppModule implements OnModuleInit {
       this.estadoSolicitudService,
       this.usuariosService,
       this.estadoReclamoService,
+      this.areasService,
+      this.subareasService,
+      this.prioridadService,
+      this.criticidadService,
+      this.tipoReclamoService,
+      this.clientesService,
+      this.empleadosService,   // 👈 este va primero
+      this.proyectosService,
+      this.reclamosService,
+      this.connection,
     );
   }
+
 }
