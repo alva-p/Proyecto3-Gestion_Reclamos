@@ -26,6 +26,9 @@ export class HistorialReclamo extends Document {
   @Prop({ required: true })
   detalleAccion: string;
 
+  @Prop()
+  comentario?: string;
+
   @Prop({ required: true })
   fechaHora: Date;
 }

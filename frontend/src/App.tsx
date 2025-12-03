@@ -13,6 +13,7 @@ import { NewClaimForm } from "./components/NewClaimForm";
 import { RegistrationRequestsView } from "./components/RegistrationRequestsView";
 import { UsersManagement } from "./components/UsersManagement";
 import { UserProfile } from "./components/UserProfile";
+import { AreasManagement } from "./components/AreasManagement";
 import { Toaster } from "./components/ui/sonner";
 
 type View =
@@ -24,10 +25,11 @@ type View =
   | "new-claim"
   | "requests"
   | "users"
+  | "areas"
   | "profile";
 
 const AppContent: React.FC = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [currentView, setCurrentView] =
     useState<View>("dashboard");
   const [selectedClaimId, setSelectedClaimId] = useState<
@@ -48,10 +50,21 @@ const AppContent: React.FC = () => {
 
   const handleBackFromClaim = () => {
     setCurrentView(
-      user?.role === "cliente" ? "my-claims" : "all-claims",
+      user?.rol === "cliente" ? "my-claims" : "all-claims",
     );
     setSelectedClaimId(null);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     if (showRegistration) {
@@ -80,11 +93,11 @@ const AppContent: React.FC = () => {
 
     switch (currentView) {
       case "dashboard":
-        if (user?.role === "cliente")
+        if (user?.rol === "cliente")
           return <ClientDashboard />;
-        if (user?.role === "empleado")
+        if (user?.rol === "empleado")
           return <EmployeeDashboard />;
-        if (user?.role === "administrador")
+        if (user?.rol === "admin")
           return <AdminDashboard />;
         return null;
 
@@ -105,6 +118,9 @@ const AppContent: React.FC = () => {
 
       case "users":
         return <UsersManagement />;
+
+      case "areas":
+        return <AreasManagement />;
 
       case "profile":
         return <UserProfile />;

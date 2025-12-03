@@ -25,4 +25,10 @@ export class AuthController {
   async registerCliente(@Body() registerDto: RegisterClienteDto) {
     return this.authService.registerCliente(registerDto);
   }
+
+  @Post('register/admin')
+  @HttpCode(HttpStatus.CREATED)
+  async registerAdmin(@Body() body: { nombre: string; correo: string; contraseña: string }) {
+    return this.authService.registerAdmin(body);
+  }
 }

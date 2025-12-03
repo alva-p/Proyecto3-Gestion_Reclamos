@@ -22,6 +22,7 @@ import { CriticidadModule } from './criticidad/criticidad.module';
 import { EstadoReclamoModule } from './estado-reclamo/estado-reclamo.module';
 import { EstadoSolicitudModule } from './estado-solicitud/estado-solicitud.module';
 import { ResumenResolucionModule } from './resumen-resolucion/resumen-resolucion.module';
+import { ComentariosInternosModule } from './comentarios-internos/comentarios-internos.module';
 import { HealthController } from './health/health.controller';
 import { EstadoReclamoService } from './estado-reclamo/estado-reclamo.service'; // Asegúrate de tener esta importación
 
@@ -52,6 +53,7 @@ import { seedInitialData } from './seed/seed-initial-data';
     EstadoReclamoModule,
     EstadoSolicitudModule,
     ResumenResolucionModule,
+    ComentariosInternosModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService],

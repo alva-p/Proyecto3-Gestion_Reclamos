@@ -28,19 +28,19 @@ export class AuthService {
     const usuario = await this.usuariosService.findByEmailWithPassword(correo);
 
     if (!usuario) {
-      throw new UnauthorizedException('Credenciales inválidas');
+      throw new UnauthorizedException('El correo no existe en el sistema');
     }
 
     // Verificar contraseña
     const isPasswordValid = await bcrypt.compare(contraseña, usuario.contraseña);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Credenciales inválidas');
+      throw new UnauthorizedException('Contraseña incorrecta');
     }
 
     // Verificar si el usuario está activo
     if (!usuario.activo) {
-      throw new UnauthorizedException('Usuario inactivo');
+      throw new UnauthorizedException('Usuario inactivo. Contacte al administrador.');
     }
 
     // Poblar el rol para obtener el nombre
@@ -49,6 +49,22 @@ export class AuthService {
       typeof usuario.rol === 'object' && usuario.rol !== null
         ? (usuario.rol as any).nombre
         : (usuario.rol as any)?.toString?.();
+
+    // Buscar empleado o cliente asociado al usuario
+    let empleadoId: string | undefined;
+    let clienteId: string | undefined;
+
+    if (rolNombre === 'EMPLEADO') {
+      const empleado = await this.empleadosService.findByUsuarioId((usuario._id as any).toString());
+      if (empleado) {
+        empleadoId = (empleado._id as any).toString();
+      }
+    } else if (rolNombre === 'CLIENTE') {
+      const cliente = await this.clientesService.findByUsuarioId((usuario._id as any).toString());
+      if (cliente) {
+        clienteId = (cliente._id as any).toString();
+      }
+    }
 
     // Generar token JWT
     const payload = {
@@ -66,6 +82,8 @@ export class AuthService {
         nombre: usuario.nombre,
         correo: usuario.correo,
         rol: rolNombre,
+        empleadoId,
+        clienteId,
       },
     };
   }
@@ -167,6 +185,40 @@ export class AuthService {
         id: cliente._id,
         empresa: cliente.empresa,
         estadoSolicitud: 'PENDIENTE',
+      },
+    };
+  }
+
+  async registerAdmin(registerDto: { nombre: string; correo: string; contraseña: string }) {
+    const { nombre, correo, contraseña } = registerDto;
+
+    const existingUser = await this.usuariosService.findByEmail(correo);
+    if (existingUser) {
+      throw new ConflictException('El correo ya está registrado');
+    }
+
+    const adminRol = await this.rolesService.findByName('ADMIN');
+    if (!adminRol) {
+      throw new BadRequestException('Rol ADMIN no encontrado en el sistema');
+    }
+
+    const hashedPassword = await bcrypt.hash(contraseña, 10);
+
+    const usuario = await this.usuariosService.create({
+      nombre,
+      correo,
+      contraseña: hashedPassword,
+      rol: (adminRol._id as any).toString(),
+      activo: true,
+    });
+
+    return {
+      message: 'Administrador registrado exitosamente',
+      usuario: {
+        id: usuario._id,
+        nombre: usuario.nombre,
+        correo: usuario.correo,
+        rol: 'ADMIN',
       },
     };
   }

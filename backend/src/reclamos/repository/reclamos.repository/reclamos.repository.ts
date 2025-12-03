@@ -19,9 +19,18 @@ export class ReclamosRepository {
   async findById(id: string): Promise<ReclamoDocument | null> {
     return this.reclamoModel
       .findById(id)
-      .populate(
-        'tipoReclamo prioridad criticidad area subarea estadoActual asignadoActual historialIds resumenResolucionId',
-      )
+      .populate('tipoReclamo prioridad criticidad area subarea estadoActual asignadoActual resumenResolucionId')
+      .populate({
+        path: 'historialIds',
+        populate: [
+          { path: 'estadoReclamo', select: 'nombre' },
+          { path: 'empleado', populate: { path: 'usuarioId', select: 'nombre correo' } },
+          { path: 'area', select: 'nombre' },
+          { path: 'subarea', select: 'nombre' }
+        ]
+      })
+      .populate({ path: 'proyectoId', select: 'nombre descripcion tipoProyecto' })
+      .populate({ path: 'clienteId', select: 'empresa usuarioId' })
       .exec();
   }
 
@@ -29,9 +38,18 @@ export class ReclamosRepository {
   async findAll(filters: any = {}): Promise<ReclamoDocument[]> {
     return this.reclamoModel
       .find(filters)
-      .populate(
-        'tipoReclamo prioridad criticidad area subarea estadoActual asignadoActual historialIds resumenResolucionId',
-      )
+      .populate('tipoReclamo prioridad criticidad area subarea estadoActual asignadoActual resumenResolucionId')
+      .populate({
+        path: 'historialIds',
+        populate: [
+          { path: 'estadoReclamo', select: 'nombre' },
+          { path: 'empleado', populate: { path: 'usuarioId', select: 'nombre correo' } },
+          { path: 'area', select: 'nombre' },
+          { path: 'subarea', select: 'nombre' }
+        ]
+      })
+      .populate({ path: 'proyectoId', select: 'nombre descripcion tipoProyecto' })
+      .populate({ path: 'clienteId', select: 'empresa usuarioId' })
       .exec();
   }
 
@@ -99,5 +117,10 @@ export class ReclamosRepository {
   // Contar reclamos por proyecto
   async countByProyecto(proyectoId: string): Promise<number> {
     return this.reclamoModel.countDocuments({ proyectoId }).exec();
+  }
+
+  // Contar todos los reclamos (para generar numeroReclamo)
+  async countAll(): Promise<number> {
+    return this.reclamoModel.countDocuments().exec();
   }
 }

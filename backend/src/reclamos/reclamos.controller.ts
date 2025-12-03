@@ -25,6 +25,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 
 import { ClientesService } from '../clientes/clientes.service';
+import { ProyectosService } from '../proyectos/proyectos.service';
 
 @Controller('reclamos')
 // Cuando quieras volver a activar seguridad, descomentá esto:
@@ -33,10 +34,12 @@ export class ReclamosController {
   constructor(
     private readonly reclamosService: ReclamosService,
     private readonly clientesService: ClientesService,
+    private readonly proyectosService: ProyectosService,
   ) {}
 
   // 1 - Crear reclamo (cliente)
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('CLIENTE')
   async createReclamo(
     @Body() createReclamoDto: CreateReclamoDto,
@@ -46,19 +49,22 @@ export class ReclamosController {
       throw new BadRequestException('Usuario no autenticado');
     }
 
-    const usuarioId = user.userId;
-
-    const cliente = await this.clientesService.findByUsuarioId(usuarioId);
-    if (!cliente) {
-      throw new BadRequestException(
-        'El usuario logueado no está asociado a un cliente válido',
-      );
+    // Derivar clienteId desde el proyecto para evitar depender de la asociación usuario-cliente
+    const proyecto = await this.proyectosService.findById(createReclamoDto.proyectoId);
+    if (!proyecto) {
+      throw new BadRequestException('Proyecto no encontrado');
     }
 
-    return this.reclamosService.createReclamo(
-      (cliente._id as any).toString(),
-      createReclamoDto,
-    );
+    if (!proyecto.clienteId) {
+      throw new BadRequestException('El proyecto no tiene un cliente asociado');
+    }
+
+    // Si clienteId está populado (es un objeto), extraer el _id
+    const clienteId = typeof proyecto.clienteId === 'object' && proyecto.clienteId !== null
+      ? ((proyecto.clienteId as any)._id?.toString() ?? (proyecto.clienteId as any).toString())
+      : (proyecto.clienteId as any).toString();
+    
+    return this.reclamosService.createReclamo(clienteId, createReclamoDto);
   }
 
   // 2 - Estadísticas por empleado

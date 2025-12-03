@@ -7,16 +7,16 @@ import { Badge } from './ui/badge';
 import { useAuth } from '../contexts/AuthContext';
 import { User, Mail, Building, Phone, MapPin, Calendar, Shield } from 'lucide-react';
 import { roleLabels } from '../utils/translations';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 export const UserProfile: React.FC = () => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    name: user?.name || '',
-    phone: user?.phone || '',
-    address: user?.address || '',
-    company: user?.company || '',
+    name: user?.nombre || '',
+    phone: '',
+    address: '',
+    company: '',
   });
 
   if (!user) return null;
@@ -29,24 +29,24 @@ export const UserProfile: React.FC = () => {
 
   const handleCancel = () => {
     setFormData({
-      name: user.name,
-      phone: user.phone || '',
-      address: user.address || '',
-      company: user.company || '',
+      name: user.nombre,
+      phone: '',
+      address: '',
+      company: '',
     });
     setIsEditing(false);
   };
 
   const getRoleBadge = () => {
-    const colors = {
+    const colors: Record<string, string> = {
       cliente: 'bg-blue-100 text-blue-800',
       empleado: 'bg-green-100 text-green-800',
-      administrador: 'bg-purple-100 text-purple-800',
+      admin: 'bg-purple-100 text-purple-800',
     };
 
     return (
-      <Badge className={colors[user.role]}>
-        {roleLabels[user.role]}
+      <Badge className={colors[user.rol] || 'bg-gray-100 text-gray-800'}>
+        {roleLabels[user.rol] || user.rol.toUpperCase()}
       </Badge>
     );
   };
@@ -66,8 +66,8 @@ export const UserProfile: React.FC = () => {
               <User className="w-10 h-10 text-indigo-600" />
             </div>
             <div className="flex-1">
-              <h3 className="text-gray-900">{user.name}</h3>
-              <p className="text-gray-600">{user.email}</p>
+              <h3 className="text-gray-900">{user.nombre}</h3>
+              <p className="text-gray-600">{user.correo}</p>
               <div className="mt-2">{getRoleBadge()}</div>
             </div>
             {!isEditing && (
@@ -98,7 +98,7 @@ export const UserProfile: React.FC = () => {
                   />
                 </div>
 
-                {user.role === 'cliente' && (
+                {user.rol === 'cliente' && (
                   <>
                     <div className="space-y-2">
                       <Label htmlFor="company">Empresa</Label>
@@ -146,7 +146,7 @@ export const UserProfile: React.FC = () => {
                   <Mail className="w-5 h-5 text-gray-500 mt-0.5" />
                   <div>
                     <p className="text-sm text-gray-600">Correo Electrónico</p>
-                    <p className="text-gray-900">{user.email}</p>
+                    <p className="text-gray-900">{user.correo}</p>
                   </div>
                 </div>
 
@@ -154,60 +154,18 @@ export const UserProfile: React.FC = () => {
                   <Shield className="w-5 h-5 text-gray-500 mt-0.5" />
                   <div>
                     <p className="text-sm text-gray-600">Rol</p>
-                    <p className="text-gray-900">{roleLabels[user.role]}</p>
+                    <p className="text-gray-900">{roleLabels[user.rol]}</p>
                   </div>
                 </div>
 
-                {user.role !== 'cliente' && user.area && (
-                  <div className="flex items-start gap-3">
-                    <Building className="w-5 h-5 text-gray-500 mt-0.5" />
-                    <div>
-                      <p className="text-sm text-gray-600">Área</p>
-                      <p className="text-gray-900">{user.area}</p>
-                    </div>
-                  </div>
-                )}
 
-                {user.role === 'cliente' && (
-                  <>
-                    {user.company && (
-                      <div className="flex items-start gap-3">
-                        <Building className="w-5 h-5 text-gray-500 mt-0.5" />
-                        <div>
-                          <p className="text-sm text-gray-600">Empresa</p>
-                          <p className="text-gray-900">{user.company}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {user.phone && (
-                      <div className="flex items-start gap-3">
-                        <Phone className="w-5 h-5 text-gray-500 mt-0.5" />
-                        <div>
-                          <p className="text-sm text-gray-600">Teléfono</p>
-                          <p className="text-gray-900">{user.phone}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {user.address && (
-                      <div className="flex items-start gap-3">
-                        <MapPin className="w-5 h-5 text-gray-500 mt-0.5" />
-                        <div>
-                          <p className="text-sm text-gray-600">Dirección</p>
-                          <p className="text-gray-900">{user.address}</p>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
 
                 <div className="flex items-start gap-3">
                   <Calendar className="w-5 h-5 text-gray-500 mt-0.5" />
                   <div>
                     <p className="text-sm text-gray-600">Fecha de Registro</p>
                     <p className="text-gray-900">
-                      {user.createdAt.toLocaleDateString('es-AR')}
+                      No disponible
                     </p>
                   </div>
                 </div>

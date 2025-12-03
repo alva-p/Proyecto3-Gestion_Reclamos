@@ -77,33 +77,33 @@ export class ReclamosService {
         throw new NotFoundException('Criticidad inválida.');
       }
 
-      const estadoInicial =
-        await this.estadoReclamoService.findByNombre('Enviado');
-      if (!estadoInicial) {
-        throw new NotFoundException(
-          'No se encontró el estado inicial "Enviado".',
-        );
-      }
+    const estadoInicial = await this.estadoReclamoService.findByNombre('Enviado');
+    if (!estadoInicial) {
+      throw new NotFoundException('No se encontró el estado inicial "Enviado".');
+    }
 
-      // 1) Crear reclamo
-      const reclamo = await this.reclamosRepository.create(
-        {
-          titulo,
-          descripcion,
-          tipoReclamo,
-          prioridad,
-          criticidad,
-          area: null,
-          subarea: null,
-          estadoActual: estadoInicial._id,
-          asignadoActual: null,
-          historialIds: [],
-          resumenResolucionId: null,
-          proyectoId,
-          clienteId,
-        },
-        session,
-      );
+        // Generar numeroReclamo único (simple contador incremental)
+        const totalReclamos = await this.reclamosRepository.countAll();
+        const numeroReclamo = `REC-${String(totalReclamos + 1).padStart(6, '0')}`;
+        // 1) Crear reclamo
+        const reclamo = await this.reclamosRepository.create(
+          {
+            titulo,
+            descripcion,
+            tipoReclamo,
+            prioridad,
+            criticidad,
+            area: null,
+            subarea: null,
+            estadoActual: estadoInicial._id,
+            asignadoActual: null,
+            historialIds: [],
+            resumenResolucionId: null,
+            proyectoId,
+            clienteId,
+          },
+          session,
+        );
 
       // 2) Crear historial inicial
       const historial = await this.historialReclamoService.create(
@@ -139,7 +139,15 @@ export class ReclamosService {
     if (filters.area) query.area = filters.area;
     if (filters.clienteId) query.clienteId = filters.clienteId;
     if (filters.proyectoId) query.proyectoId = filters.proyectoId;
-    if (filters.asignadoActual) query.asignadoActual = filters.asignadoActual;
+    
+    // Convertir asignadoActual a ObjectId si es un string válido
+    if (filters.asignadoActual) {
+        if (Types.ObjectId.isValid(filters.asignadoActual)) {
+            query.asignadoActual = new Types.ObjectId(filters.asignadoActual);
+        } else {
+            query.asignadoActual = filters.asignadoActual;
+        }
+    }
 
     return this.reclamosRepository.findAll(query);
   }
@@ -170,11 +178,12 @@ export class ReclamosService {
         await this.estadoReclamoService.findById(nuevoEstadoId);
       if (!nuevoEstado) throw new NotFoundException('Estado inválido.');
 
-      const estadoActual = await this.estadoReclamoService.findById(
-        reclamo.estadoActual as any,
-      );
-      if (estadoActual.nombre === 'Cerrado') {
-        throw new ConflictException('El reclamo ya está cerrado.');
+    const estadoActual = await this.estadoReclamoService.findById(
+      reclamo.estadoActual as any,
+    );
+
+      if (estadoActual.nombre === 'Cerrado' || estadoActual.nombre === 'Cancelado') {
+        throw new ConflictException('El reclamo no permite modificaciones en estado actual.');
       }
 
       if (empleadoId) {

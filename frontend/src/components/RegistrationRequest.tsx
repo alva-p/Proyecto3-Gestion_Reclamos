@@ -5,7 +5,8 @@ import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Alert, AlertDescription } from './ui/alert';
 import { ArrowLeft, CheckCircle2, Building2 } from 'lucide-react';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
+import { authApi } from '../services/api';
 
 interface RegistrationRequestProps {
   onBackToLogin: () => void;
@@ -18,7 +19,9 @@ export const RegistrationRequest: React.FC<RegistrationRequestProps> = ({ onBack
     email: '',
     phone: '',
     address: '',
+    password: '',
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -28,13 +31,26 @@ export const RegistrationRequest: React.FC<RegistrationRequestProps> = ({ onBack
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Simulación de envío
-    console.log('Solicitud de registro:', formData);
-    setSubmitted(true);
-    toast.success('Solicitud enviada correctamente');
+    setIsSubmitting(true);
+    try {
+      await authApi.registerCliente({
+        nombre: formData.name,
+        correo: formData.email,
+        contraseña: formData.password,
+        empresa: formData.company,
+        telefono: formData.phone,
+        direccion: formData.address,
+      });
+      setSubmitted(true);
+      toast.success('Solicitud enviada correctamente');
+    } catch (err: any) {
+      const msg = err?.message || 'Error al enviar la solicitud';
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -132,6 +148,19 @@ export const RegistrationRequest: React.FC<RegistrationRequestProps> = ({ onBack
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="password">Contraseña *</Label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  placeholder="Mínimo 6 caracteres"
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="phone">Teléfono *</Label>
                 <Input
                   id="phone"
@@ -163,8 +192,8 @@ export const RegistrationRequest: React.FC<RegistrationRequestProps> = ({ onBack
                 </AlertDescription>
               </Alert>
 
-              <Button type="submit" className="w-full">
-                Enviar Solicitud
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? 'Enviando...' : 'Enviar Solicitud'}
               </Button>
             </form>
           </CardContent>
