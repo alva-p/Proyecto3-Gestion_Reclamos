@@ -32,7 +32,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     ];
 
-    let roleItems = [];
+    let roleItems: { id: string; label: string; icon: React.ElementType }[] = [];
 
     if (user.rol === 'cliente') {
       roleItems = [

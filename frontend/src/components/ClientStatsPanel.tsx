@@ -13,7 +13,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-
+import { getAuthToken } from '../services/api';
 interface EstadoData {
   _id: string;
   cantidad: number;
@@ -80,9 +80,15 @@ export const ClientStatsPanel: React.FC<Props> = ({ clienteId }) => {
 
         console.log('Llamando a estadísticas cliente:', url);
 
+        const token = getAuthToken();
+        const headers: HeadersInit = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
         const res = await fetch(url, {
           method: 'GET',
-          credentials: 'include',
+          headers,
         });
 
         const raw = await res.text();
@@ -105,15 +111,14 @@ export const ClientStatsPanel: React.FC<Props> = ({ clienteId }) => {
       }
     };
 
-    // primera carga
     fetchStats();
-    // auto-refresh cada 10 segundos
     intervalId = setInterval(fetchStats, 10000);
 
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
   }, [clienteId, fechaInicio, fechaFin]);
+
 
   if (loading && !stats) return <div>Cargando estadísticas...</div>;
   if (error) return <div>{error}</div>;

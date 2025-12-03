@@ -57,7 +57,12 @@ export class ReclamosService {
       if (!proyecto) {
         throw new NotFoundException('El proyecto no existe.');
       }
-      if (!new Types.ObjectId(clienteId).equals(proyecto.clienteId as any)) {
+      const proyectoClienteId =
+        typeof proyecto.clienteId === 'object' && proyecto.clienteId !== null
+          ? ((proyecto.clienteId as any)._id?.toString() ?? (proyecto.clienteId as any).toString())
+          : (proyecto.clienteId as any)?.toString();
+
+      if (!proyectoClienteId || proyectoClienteId !== clienteId.toString()) {
         throw new BadRequestException('El proyecto no pertenece al cliente.');
       }
 

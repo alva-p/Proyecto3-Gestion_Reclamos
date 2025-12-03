@@ -50,8 +50,12 @@ export const NewClaimForm: React.FC = () => {
     const loadInitialData = async () => {
       try {
         setLoadingData(true);
+
+        // ⬅️ tomamos clienteId del usuario logueado (viene del login)
+        const clienteId = (user as any)?.clienteId as string | undefined;
+
         const [proyectosData, areasData, tiposData, prioridadesData, criticidadesData] = await Promise.all([
-          proyectosApi.getAll(),
+          proyectosApi.getAll(clienteId ? { clienteId } : undefined),
           areasApi.getAll(),
           tiposReclamoApi.getAll(),
           prioridadesApi.getAll(),
@@ -71,8 +75,10 @@ export const NewClaimForm: React.FC = () => {
       }
     };
 
-    loadInitialData();
-  }, []);
+    if (user) {
+      loadInitialData();
+    }
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,7 +207,7 @@ export const NewClaimForm: React.FC = () => {
               <Label htmlFor="project">Proyecto Asociado *</Label>
               <Select
                 value={formData.proyectoId}
-                onValueChange={(value) => setFormData({ ...formData, proyectoId: value })}
+                onValueChange={(value: string) => setFormData({ ...formData, proyectoId: value })}
                 required
                 disabled={loading}
               >
@@ -251,7 +257,7 @@ export const NewClaimForm: React.FC = () => {
               <Label htmlFor="area">Área *</Label>
               <Select
                 value={formData.area}
-                onValueChange={(value) => setFormData({ ...formData, area: value })}
+                onValueChange={(value: string) => setFormData({ ...formData, area: value })}
                 required
                 disabled={loading}
               >
@@ -273,7 +279,7 @@ export const NewClaimForm: React.FC = () => {
                 <Label htmlFor="type">Tipo de Reclamo *</Label>
                 <Select
                   value={formData.tipoReclamo}
-                  onValueChange={(value) => setFormData({ ...formData, tipoReclamo: value })}
+                  onValueChange={(value: string) => setFormData({ ...formData, tipoReclamo: value })}
                   required
                   disabled={loading}
                 >
@@ -294,7 +300,7 @@ export const NewClaimForm: React.FC = () => {
                 <Label htmlFor="priority">Prioridad *</Label>
                 <Select
                   value={formData.prioridad}
-                  onValueChange={(value) => setFormData({ ...formData, prioridad: value })}
+                  onValueChange={(value: string) => setFormData({ ...formData, prioridad: value })}
                   required
                   disabled={loading}
                 >
@@ -315,7 +321,7 @@ export const NewClaimForm: React.FC = () => {
                 <Label htmlFor="criticality">Nivel de Criticidad *</Label>
                 <Select
                   value={formData.criticidad}
-                  onValueChange={(value) => setFormData({ ...formData, criticidad: value })}
+                  onValueChange={(value: string) => setFormData({ ...formData, criticidad: value })}
                   required
                   disabled={loading}
                 >

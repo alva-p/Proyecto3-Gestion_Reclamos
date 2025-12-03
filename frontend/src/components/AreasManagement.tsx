@@ -232,7 +232,7 @@ export const AreasManagement: React.FC = () => {
       </Card>
 
       {/* Dialog de confirmación de eliminación */}
-      <Dialog open={deleteConfirm.show} onOpenChange={(open) => !open && setDeleteConfirm({ show: false, area: null })}>
+      <Dialog open={deleteConfirm.show} onOpenChange={(open: boolean) => !open && setDeleteConfirm({ show: false, area: null })}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>¿Eliminar área?</DialogTitle>

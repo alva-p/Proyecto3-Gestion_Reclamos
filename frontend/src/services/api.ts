@@ -335,8 +335,10 @@ export const proyectosApi = {
     if (filters?.clienteId) params.set('clienteId', filters.clienteId);
     if (filters?.tipoProyecto) params.set('tipoProyecto', filters.tipoProyecto);
     if (filters?.nombre) params.set('nombre', filters.nombre);
+
     const qs = params.toString();
     const url = qs ? `${API_BASE_URL}/proyectos?${qs}` : `${API_BASE_URL}/proyectos`;
+
     const response = await apiFetch(url);
     return handleResponse<ProyectoResponse[]>(response);
   },
@@ -351,6 +353,7 @@ export const proyectosApi = {
     return handleResponse<ProyectoResponse>(response);
   },
 };
+
 
 // ==================== TIPOS DE PROYECTO ====================
 
@@ -402,8 +405,15 @@ export const clientesApi = {
 
 export interface LoginResponse {
   accessToken: string;
-  usuario: { id: string; nombre: string; correo: string; rol: string };
+  usuario: {
+    id: string;
+    nombre: string;
+    correo: string;
+    rol: string;
+    clienteId?: string; // ⬅️ NUEVO
+  };
 }
+
 
 export const authApi = {
   async login({ correo, contraseña }: { correo: string; contraseña: string }): Promise<LoginResponse> {

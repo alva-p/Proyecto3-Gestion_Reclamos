@@ -13,100 +13,102 @@ import { RegisterClienteDto } from './dto/register-cliente.dto';
 @Injectable()
 export class AuthService {
   constructor(
-    private usuariosService: UsuariosService,
-    private empleadosService: EmpleadosService,
-    private clientesService: ClientesService,
-    private rolesService: RolesService,
-    private estadoSolicitudService: EstadoSolicitudService,
-    private jwtService: JwtService,
+    private readonly usuariosService: UsuariosService,
+    private readonly empleadosService: EmpleadosService,
+    private readonly clientesService: ClientesService,
+    private readonly rolesService: RolesService,
+    private readonly estadoSolicitudService: EstadoSolicitudService,
+    private readonly jwtService: JwtService,
   ) {}
 
+  // ================== LOGIN ==================
   async login(loginDto: LoginDto) {
     const { correo, contraseña } = loginDto;
 
-    // Buscar usuario por correo (incluyendo la contraseña)
+    // 1) Buscar usuario por correo (incluyendo contraseña)
     const usuario = await this.usuariosService.findByEmailWithPassword(correo);
 
     if (!usuario) {
       throw new UnauthorizedException('El correo no existe en el sistema');
     }
 
-    // Verificar contraseña
+    // 2) Verificar contraseña
     const isPasswordValid = await bcrypt.compare(contraseña, usuario.contraseña);
-
     if (!isPasswordValid) {
       throw new UnauthorizedException('Contraseña incorrecta');
     }
 
-    // Verificar si el usuario está activo
+    // 3) Verificar si el usuario está activo
     if (!usuario.activo) {
       throw new UnauthorizedException('Usuario inactivo. Contacte al administrador.');
     }
 
-    // Poblar el rol para obtener el nombre
+    // 4) Poblar rol para obtener el nombre
     await usuario.populate('rol');
     const rolNombre =
       typeof usuario.rol === 'object' && usuario.rol !== null
         ? (usuario.rol as any).nombre
         : (usuario.rol as any)?.toString?.();
 
-    // Buscar empleado o cliente asociado al usuario
+    // 5) Buscar empleado o cliente asociado al usuario
     let empleadoId: string | undefined;
     let clienteId: string | undefined;
 
+    const usuarioIdStr = (usuario._id as any).toString();
+
     if (rolNombre === 'EMPLEADO') {
-      const empleado = await this.empleadosService.findByUsuarioId((usuario._id as any).toString());
+      const empleado = await this.empleadosService.findByUsuarioId(usuarioIdStr);
       if (empleado) {
         empleadoId = (empleado._id as any).toString();
       }
-    } else if (rolNombre === 'CLIENTE') {
-      const cliente = await this.clientesService.findByUsuarioId((usuario._id as any).toString());
+    }
+
+    if (rolNombre === 'CLIENTE') {
+      const cliente = await this.clientesService.findByUsuarioId(usuarioIdStr);
       if (cliente) {
         clienteId = (cliente._id as any).toString();
       }
     }
 
-    // Generar token JWT
+    // 6) Generar token JWT
     const payload = {
-      sub: (usuario._id as any).toString(),
+      sub: usuarioIdStr,
       correo: usuario.correo,
       rol: rolNombre,
     };
 
     const accessToken = this.jwtService.sign(payload);
 
+    // 7) Respuesta al front
     return {
       accessToken,
       usuario: {
-        id: usuario._id,
+        id: usuarioIdStr,
         nombre: usuario.nombre,
         correo: usuario.correo,
         rol: rolNombre,
-        empleadoId,
-        clienteId,
+        empleadoId, // solo viene si es EMPLEADO
+        clienteId,  // solo viene si es CLIENTE
       },
     };
   }
 
+  // ================== REGISTER EMPLEADO ==================
   async registerEmpleado(registerDto: RegisterEmpleadoDto) {
     const { nombre, correo, contraseña, puesto, subareaId } = registerDto;
 
-    // Verificar que el correo no esté registrado
     const existingUser = await this.usuariosService.findByEmail(correo);
     if (existingUser) {
       throw new ConflictException('El correo ya está registrado');
     }
 
-    // Obtener el rol de EMPLEADO
     const empleadoRol = await this.rolesService.findByName('EMPLEADO');
     if (!empleadoRol) {
       throw new BadRequestException('Rol EMPLEADO no encontrado en el sistema');
     }
 
-    // Encriptar contraseña
     const hashedPassword = await bcrypt.hash(contraseña, 10);
 
-    // Crear usuario
     const usuario = await this.usuariosService.create({
       nombre,
       correo,
@@ -115,7 +117,6 @@ export class AuthService {
       activo: true,
     });
 
-    // Crear empleado
     const empleado = await this.empleadosService.create({
       usuarioId: (usuario._id as any).toString(),
       puesto,
@@ -125,52 +126,47 @@ export class AuthService {
     return {
       message: 'Empleado registrado exitosamente',
       usuario: {
-        id: usuario._id,
+        id: (usuario._id as any).toString(),
         nombre: usuario.nombre,
         correo: usuario.correo,
         rol: 'EMPLEADO',
       },
       empleado: {
-        id: empleado._id,
+        id: (empleado._id as any).toString(),
         puesto: empleado.puesto,
       },
     };
   }
 
+  // ================== REGISTER CLIENTE ==================
   async registerCliente(registerDto: RegisterClienteDto) {
     const { nombre, correo, contraseña, empresa, telefono, direccion } = registerDto;
 
-    // Verificar que el correo no esté registrado
     const existingUser = await this.usuariosService.findByEmail(correo);
     if (existingUser) {
       throw new ConflictException('El correo ya está registrado');
     }
 
-    // Obtener el rol de CLIENTE
     const clienteRol = await this.rolesService.findByName('CLIENTE');
     if (!clienteRol) {
       throw new BadRequestException('Rol CLIENTE no encontrado en el sistema');
     }
 
-    // Obtener el estado PENDIENTE
     const estadoPendiente = await this.estadoSolicitudService.findByName('PENDIENTE');
     if (!estadoPendiente) {
       throw new BadRequestException('Estado PENDIENTE no encontrado en el sistema');
     }
 
-    // Encriptar contraseña
     const hashedPassword = await bcrypt.hash(contraseña, 10);
 
-    // Crear usuario (inactivo hasta que sea aprobado)
     const usuario = await this.usuariosService.create({
       nombre,
       correo,
       contraseña: hashedPassword,
       rol: (clienteRol._id as any).toString(),
-      activo: false, // Inactivo hasta aprobación
+      activo: false, // inactivo hasta aprobación
     });
 
-    // Crear cliente
     const cliente = await this.clientesService.create({
       usuarioId: (usuario._id as any).toString(),
       empresa,
@@ -182,13 +178,14 @@ export class AuthService {
     return {
       message: 'Solicitud de registro enviada. Espere la aprobación del administrador.',
       cliente: {
-        id: cliente._id,
+        id: (cliente._id as any).toString(),
         empresa: cliente.empresa,
         estadoSolicitud: 'PENDIENTE',
       },
     };
   }
 
+  // ================== REGISTER ADMIN ==================
   async registerAdmin(registerDto: { nombre: string; correo: string; contraseña: string }) {
     const { nombre, correo, contraseña } = registerDto;
 
@@ -215,7 +212,7 @@ export class AuthService {
     return {
       message: 'Administrador registrado exitosamente',
       usuario: {
-        id: usuario._id,
+        id: (usuario._id as any).toString(),
         nombre: usuario.nombre,
         correo: usuario.correo,
         rol: 'ADMIN',
@@ -223,6 +220,7 @@ export class AuthService {
     };
   }
 
+  // ================== VALIDATE USER (para guards, etc.) ==================
   async validateUser(userId: string) {
     return this.usuariosService.findById(userId);
   }

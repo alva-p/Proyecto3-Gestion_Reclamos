@@ -31,7 +31,7 @@ export const AdminStatsPanel: React.FC<Props> = ({ fechaInicio, fechaFin }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: number;
     const fetchStats = async () => {
       setLoading(true);
       let url = `/backend/reclamos/estadisticas-admin`;

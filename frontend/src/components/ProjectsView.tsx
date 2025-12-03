@@ -178,7 +178,7 @@ export const ProjectsView: React.FC = () => {
                 <Label htmlFor="cliente">Cliente *</Label>
                 <Select
                   value={formData.clienteId}
-                  onValueChange={(value) => setFormData({ ...formData, clienteId: value })}
+                  onValueChange={(value: string) => setFormData({ ...formData, clienteId: value })}
                   required
                   disabled={loading}
                 >
@@ -197,7 +197,7 @@ export const ProjectsView: React.FC = () => {
                 <Label htmlFor="type">Tipo de Proyecto *</Label>
                 <Select
                   value={formData.tipoProyecto}
-                  onValueChange={(value) => setFormData({ ...formData, tipoProyecto: value })}
+                  onValueChange={(value: string) => setFormData({ ...formData, tipoProyecto: value })}
                   required
                   disabled={loading}
                 >
