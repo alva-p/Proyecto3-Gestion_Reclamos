@@ -44,7 +44,12 @@ export const EmployeeDashboard: React.FC = () => {
   const [error, setError] = React.useState<string | null>(null);
 
   // Intentamos obtener el id de cualquier forma (_id o id)
-  const empleadoId = (user as any)?._id ?? (user as any)?.id;
+// EL EMPLEADO ID REAL VIENE DEL LOGIN: usuario.empleadoId
+const empleadoId =
+  (user as any)?.empleadoId ||
+  JSON.parse(localStorage.getItem('usuario') || '{}')?.empleadoId ||
+  null;
+
 
   React.useEffect(() => {
     const fetchStats = async () => {

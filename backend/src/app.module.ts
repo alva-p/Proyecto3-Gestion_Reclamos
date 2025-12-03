@@ -24,11 +24,22 @@ import { EstadoSolicitudModule } from './estado-solicitud/estado-solicitud.modul
 import { ResumenResolucionModule } from './resumen-resolucion/resumen-resolucion.module';
 import { ComentariosInternosModule } from './comentarios-internos/comentarios-internos.module';
 import { HealthController } from './health/health.controller';
-import { EstadoReclamoService } from './estado-reclamo/estado-reclamo.service'; // Asegúrate de tener esta importación
 
+// Servicios que ya usabas en el seed
 import { RolesService } from './roles/roles.service';
 import { EstadoSolicitudService } from './estado-solicitud/estado-solicitud.service';
 import { UsuariosService } from './usuarios/usuarios.service';
+import { EstadoReclamoService } from './estado-reclamo/estado-reclamo.service';
+
+// NUEVOS servicios necesarios para el seed extendido
+import { AreasService } from './areas/areas.service';
+import { ProyectosService } from './proyectos/proyectos.service';
+import { ClientesService } from './clientes/clientes.service';
+import { TipoProyectoService } from './tipo-proyecto/tipo-proyecto.service';
+import { PrioridadService } from './prioridad/prioridad.service';
+import { CriticidadService } from './criticidad/criticidad.service';
+import { ReclamosService } from './reclamos/reclamos.service';
+
 import { seedInitialData } from './seed/seed-initial-data';
 
 @Module({
@@ -59,12 +70,19 @@ import { seedInitialData } from './seed/seed-initial-data';
   providers: [AppService],
 })
 export class AppModule implements OnModuleInit {
-  // Nest te inyecta los servicios aquí
   constructor(
     private readonly rolesService: RolesService,
     private readonly estadoSolicitudService: EstadoSolicitudService,
     private readonly usuariosService: UsuariosService,
     private readonly estadoReclamoService: EstadoReclamoService,
+    // nuevos inyectados
+    private readonly areasService: AreasService,
+    private readonly proyectosService: ProyectosService,
+    private readonly clientesService: ClientesService,
+    private readonly tipoProyectoService: TipoProyectoService,
+    private readonly prioridadService: PrioridadService,
+    private readonly criticidadService: CriticidadService,
+    private readonly reclamosService: ReclamosService,
   ) {}
 
   async onModuleInit() {
@@ -73,6 +91,13 @@ export class AppModule implements OnModuleInit {
       this.estadoSolicitudService,
       this.usuariosService,
       this.estadoReclamoService,
+      this.areasService,
+      this.proyectosService,
+      this.clientesService,
+      this.tipoProyectoService,
+      this.prioridadService,
+      this.criticidadService,
+      this.reclamosService,
     );
   }
 }

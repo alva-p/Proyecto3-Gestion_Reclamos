@@ -79,9 +79,9 @@ export const ProjectsView: React.FC = () => {
         const clienteIdValue = typeof (project as any).clienteId === 'object' ? (project as any).clienteId?._id : (project as any).clienteId;
         setFormData({
           nombre: project.nombre,
-          tipoProyecto: project.tipoProyecto?._id || '',
+          tipoProyecto: project.tipoProyecto?._id ? String(project.tipoProyecto._id) : '',
           descripcion: project.descripcion || '',
-          clienteId: clienteIdValue || '',
+          clienteId: clienteIdValue ? String(clienteIdValue) : '',
         });
         setEditingProject(projectId);
       }
@@ -177,8 +177,8 @@ export const ProjectsView: React.FC = () => {
               <div className="space-y-2">
                 <Label htmlFor="cliente">Cliente *</Label>
                 <Select
-                  value={formData.clienteId}
-                  onValueChange={(value: string) => setFormData({ ...formData, clienteId: value })}
+                  value={formData.clienteId || ''}
+                  onValueChange={(value: string) => setFormData({ ...formData, clienteId: String(value) })}
                   required
                   disabled={loading}
                 >
@@ -187,7 +187,7 @@ export const ProjectsView: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {clientes.map(cliente => (
-                      <SelectItem key={cliente._id} value={cliente._id}>{cliente.empresa}</SelectItem>
+                      <SelectItem key={String(cliente._id)} value={String(cliente._id)}>{cliente.empresa}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -196,8 +196,8 @@ export const ProjectsView: React.FC = () => {
               <div className="space-y-2">
                 <Label htmlFor="type">Tipo de Proyecto *</Label>
                 <Select
-                  value={formData.tipoProyecto}
-                  onValueChange={(value: string) => setFormData({ ...formData, tipoProyecto: value })}
+                  value={formData.tipoProyecto || ''}
+                  onValueChange={(value: string) => setFormData({ ...formData, tipoProyecto: String(value) })}
                   required
                   disabled={loading}
                 >
@@ -206,7 +206,7 @@ export const ProjectsView: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {tiposProyecto.map(tp => (
-                      <SelectItem key={tp._id} value={tp._id}>{tp.nombre}</SelectItem>
+                      <SelectItem key={String(tp._id)} value={String(tp._id)}>{tp.nombre}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
